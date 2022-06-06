@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import time
 from Gym import *
+from utils import *
 
 
 if __name__ == '__main__': 
@@ -28,7 +29,6 @@ if __name__ == '__main__':
     paramSimu["TempsAttenteLoader"] = 1 #0.05
     paramSimu["TempsDeplacementLoader"] = 5 #0.05
     paramSimu["TempsSechageAirLibre"] = 10
-   
     
     # Pour faciliter le développement, on s'assure d'avoir toujours le mêmes
     # nombres aléatoires d'une exécution à l'autre
@@ -36,7 +36,7 @@ if __name__ == '__main__':
     
     timer_avant = time.time()
     
-    envRL = EnvGym(paramSimu)
+    envRL = EnvGym(paramSimu, utils.get_action_space(), utils.get_state_space(), 0, 1)
     
     timer_après = time.time()
     
