@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import time
 from Gym import *
+from utils import *
 
 
 if __name__ == '__main__': 
@@ -47,7 +48,7 @@ if __name__ == '__main__':
     
     timer_avant = time.time()
     
-    envRL = EnvGym(paramSimu)
+    envRL = EnvGym(paramSimu, utils.get_action_space(), utils.get_state_space(), 0, 1)
     
     timer_après = time.time()
     
