@@ -20,8 +20,9 @@ def get_action_space(paramSimu) :
 
 def get_state_space(paramSimu) :
     
-    NbEspaceStateParProduits = 3
-    return NbEspaceStateParProduits * len(paramSimu["df_produits"])
+    NbEspaceStateParProduits = 3 * len(paramSimu["df_produits"])
+    NbDemandeVsProduit = len(paramSimu["df_produits"])
+    return NbEspaceStateParProduits + NbDemandeVsProduit
     
 if __name__ == '__main__': 
     

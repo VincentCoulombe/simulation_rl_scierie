@@ -163,7 +163,7 @@ class EnvSimpy(simpy.Environment):
         return self.lesLoader[minNom], minTemps
 
     def stepSimpy(self,action) : 
-        
+                
         # Effectuer l'action déterminée par le RL
         loader, _ = self.RetLoaderCourant()
         loader.DeplacerLoader(action)

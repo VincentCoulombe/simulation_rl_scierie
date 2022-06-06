@@ -12,17 +12,20 @@ import numpy as np
 import EnvSimpy
 
 
-# retourne lot, source, destination selon un state passé en paramètre
-def ChoixLoader(env) : 
-
+def ActionValideAleatoire(env) :
     if max(env.LienActionLot) == -1 :
-        return -1
-
+        return -1, -1
     lot = -1
     while lot == -1 :
         action = random.randint(0,3*(len(env.paramSimu["df_produits"])-1))        
         lot = env.LienActionLot[action]
             
+    return action, lot
+
+# retourne lot, source, destination selon un state passé en paramètre
+def ChoixLoader(env) : 
+           
+    action,lot = ActionValideAleatoire(env)
     return action
 
     lstChoixSource = []
@@ -78,22 +81,25 @@ class Loader() :
         
     def DeplacerLoader(self, action) : 
        
-       #lot,source,destination = action 
+        self.env.RewardActionInvalide = False
        
         source = "Sortie sciage"
         lot = self.env.LienActionLot[action]
         if lot == -1 :
-            source = "Attente"
-            self.env.RewardActionInvalide = True
-        else:
-            self.env.RewardActionInvalide = False
-                
+            action,lot = ActionValideAleatoire(self.env)
+            if lot == -1 : 
+                source = "Attente"
+            else : 
+                print("Action invalide demandée.  Remplacement par une action aléatoire.")
+                self.env.RewardActionInvalide = True
+                    
         destination = "Attente"
         for key in self.env.lesEmplacements.keys() : 
             if "Préparation séchoir" in key :
                 if not self.env.lesEmplacements[key].EstPlein() :
                     destination = self.env.lesEmplacements[key].Nom
             
+                    
         if destination == "Attente" or source == "Attente": 
             if not self.bAttente :
                 self.bAttente = True 
