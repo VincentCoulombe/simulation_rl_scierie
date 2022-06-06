@@ -107,8 +107,14 @@ class Loader() :
             self.env.EnrEven("Fin déplacement",NomLoader = self.NomLoader,Lot = self.lot,Source = self.source, Destination = self.destination)
             self.env.pdLots.loc[self.env.pdLots["Lot"] == self.lot,"Emplacement"] = self.destination
             self.env.LogCapacite(self.env.lesEmplacements[self.destination]) 
-            if self.destination == "Séchage à l'air libre" : 
-                self.env.process(EnvSimpy.SechageAirLibre(self.env,self.lot,self.destination))
+            
+            # Procédé au séchage à l'air libre
+            self.env.process(EnvSimpy.SechageAirLibre(self.env,self.lot,self.destination))
+            
+            # Procédé au séchage
+            if "Préparation séchoir" in self.destination : 
+                self.env.process(EnvSimpy.Sechage(self.env,self.lot,self.destination))
+            
             self.lot = None
 
 
