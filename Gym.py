@@ -6,6 +6,7 @@ from gym import spaces
 from EnvSimpy import *
 
 
+
 class EnvGym(gym.Env) : 
     
     def __init__(self, paramSimu: dict, nb_actions: int, state_len: int, state_min: float, state_max: float, **kwargs):
@@ -13,10 +14,14 @@ class EnvGym(gym.Env) :
         super().__init__(**kwargs)
         self.paramSimu = paramSimu
         self.action_space = spaces.Discrete(nb_actions)
+
         self.low = np.array([state_min for _ in range(state_len)], dtype=np.float32)
         self.high = np.array([state_max for _ in range(state_len)], dtype=np.float32)
         self.observation_space = spaces.Box(low=self.low, high=self.high, dtype=np.float32)
         
+    def generate_demand(self, obj_fin_simu: int):
+        return self.env.now/self.paramSimu["DureeSimulation"]*obj_fin_simu
+       
     def _update_observation(self) -> np.array:
 
         return self.env.getState() #Méthode de la simulation, state normalisé
@@ -55,15 +60,6 @@ class EnvGym(gym.Env) :
         
         return state, reward, self.done, self.info
     
-    def returnReward(self) : 
-        
-        return 0
-    
-    def returnState(self) : 
-        
-        return self.env        
-        
-    # Juste une patch pour tester reset et state... doit êre remplacé par vrai RL
     def boucle(self) : 
         
         state = self.reset()  
@@ -73,5 +69,6 @@ class EnvGym(gym.Env) :
             state, _, done, _ = self.step(action)
             
 
+# sourcery skip: remove-redundant-if
 if __name__ == '__main__': 
     pass
