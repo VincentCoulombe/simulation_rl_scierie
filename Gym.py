@@ -4,6 +4,7 @@ import numpy as np
 import gym
 from gym import spaces
 from EnvSimpy import *
+import matplotlib.pyplot as plt
 
 
 class EnvGym(gym.Env) : 
@@ -66,3 +67,4 @@ class EnvGym(gym.Env) :
             obs, _, done, _ = self.step(action, log_inds=True)
         df = pd.DataFrame(self.indicateurs, columns=["time", "reward"])
         df.plot(x="time", y=["reward"])
+        plt.show()
