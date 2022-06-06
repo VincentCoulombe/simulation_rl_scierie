@@ -36,12 +36,14 @@ def ChoixLoader(env) :
         
         source = random.choice(lstChoixSource)
         
-        if env.lesEmplacements["Cours"].EstPlein() == False and source == "Sortie sciage" :
-            lstChoixDestination.append("Cours")
-        
-        if env.lesEmplacements["Séchage à l'air libre"].EstPlein() == False and source == "Sortie sciage" :
-            lstChoixDestination.append("Séchage à l'air libre")
-        
+        if env.paramSimu["CapaciteCours"] > 0 : 
+            if env.lesEmplacements["Cours"].EstPlein() == False and source == "Sortie sciage" :
+                lstChoixDestination.append("Cours")
+                
+        if env.paramSimu["CapaciteSechageAirLibre"] > 0 : 
+            if env.lesEmplacements["Séchage à l'air libre"].EstPlein() == False and source == "Sortie sciage" :
+                lstChoixDestination.append("Séchage à l'air libre")
+            
         for i in range(env.paramSimu["nbSechoir"]) : 
             if env.lesEmplacements["Préparation séchoir " + str(i+1)].EstPlein() == False :
                 lstChoixDestination.append("Préparation séchoir " + str(i+1))
@@ -105,8 +107,14 @@ class Loader() :
             self.env.EnrEven("Fin déplacement",NomLoader = self.NomLoader,Lot = self.lot,Source = self.source, Destination = self.destination)
             self.env.pdLots.loc[self.env.pdLots["Lot"] == self.lot,"Emplacement"] = self.destination
             self.env.LogCapacite(self.env.lesEmplacements[self.destination]) 
-            if self.destination == "Séchage à l'air libre" : 
-                self.env.process(EnvSimpy.SechageAirLibre(self.env,self.lot,self.destination))
+            
+            # Procédé au séchage à l'air libre
+            self.env.process(EnvSimpy.SechageAirLibre(self.env,self.lot,self.destination))
+            
+            # Procédé au séchage
+            if "Préparation séchoir" in self.destination : 
+                self.env.process(EnvSimpy.Sechage(self.env,self.lot,self.destination))
+            
             self.lot = None
 
 

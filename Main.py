@@ -12,37 +12,52 @@ import time
 from Gym import *
 from utils import *
 
-
 if __name__ == '__main__': 
         
+    df_produits = pd.read_csv("DATA/df.csv")
+    df_rulesDetails = pd.read_csv("DATA/rulesDetails.csv")
+    df_produits = pd.concat([df_produits.iloc[0:5],df_produits.iloc[75:80]],ignore_index = True) # limiter à un sous-ensemble de produits
+        
     paramSimu = {}
-    paramSimu["DureeSimulation"] = 100
-    paramSimu["nbLoader"] = 2
+    
+    paramSimu["df_produits"] = df_produits
+    paramSimu["df_rulesDetails"] = df_rulesDetails    
+    
+    paramSimu["SimulationParContainer"] = False
+    paramSimu["DureeSimulation"] = 100 # 1 an = 8760
+    paramSimu["nbLoader"] = 1
     paramSimu["nbSechoir"] = 2
     paramSimu["ConserverListeEvenements"] = True # Si retire + rapide à l'exécution, mais perd le liste détaillée des choses qui se sont produites
 
     paramSimu["CapaciteSortieSciage"] = 10
-    paramSimu["CapaciteSechageAirLibre"] = 10
-    paramSimu["CapaciteCours"] = 5000
-    paramSimu["CapaciteSechoir"] = 50
-    paramSimu["TempsInterArriveeSciage"] = 1
+    paramSimu["CapaciteSechageAirLibre"] = 0
+    paramSimu["CapaciteCours"] = 0
+    paramSimu["CapaciteSechoir"] = 1
+    #paramSimu["TempsInterArriveeSciage"] = 1
     paramSimu["TempsAttenteLoader"] = 1 #0.05
     paramSimu["TempsDeplacementLoader"] = 5 #0.05
-    paramSimu["TempsSechageAirLibre"] = 10
+    paramSimu["TempsSechageAirLibre"] = 7*24
+    paramSimu["RatioSechageAirLibre"] = 0.1*12/52
     
+    paramSimu["HresProdScieriesParSem"] = 44+44
+    paramSimu["VariationProdScierie"] = 0.1 # Pourcentage de variation de la production de la scierie par rapport aux chiffres généraux fournis
+    paramSimu["VariationTempsSechage"] = 0.1 # Pourcentage de variation du temps de séchage par rapport à la prévision
+  
     # Pour faciliter le développement, on s'assure d'avoir toujours le mêmes
     # nombres aléatoires d'une exécution à l'autre
     random.seed(1)
     
     timer_avant = time.time()
     
-    envRL = EnvGym(paramSimu, utils.get_action_space(), utils.get_state_space(), 0, 1)
+    envRL = EnvGym(paramSimu, get_action_space(paramSimu), get_state_space(paramSimu),state_min = 0,state_max = 1)
+    envRL.boucle()
     
     timer_après = time.time()
     
     # juste pour faciliter débuggage...
     pdLots = envRL.env.pdLots
     Evenement = envRL.env.Evenements
+    df_rulesDetails = envRL.env.df_rulesDetails
 
     print("Temps d'exécution : ", timer_après-timer_avant)
     
