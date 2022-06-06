@@ -117,8 +117,11 @@ class EnvSimpy(simpy.Environment):
         
         return lstProduits
     
-    def getRespectDemande(self) : 
-        return 0
+    def generate_demand(self, obj_fin_simu: int):
+        return self.env.now/self.paramSimu["DureeSimulation"]*obj_fin_simu
+    
+    def getRespectDemande(self): 
+        return [0]
     
     def EnrEven(self,Evenement,NomLoader=None, Lot = None, Source = None, Destination = None) : 
 
