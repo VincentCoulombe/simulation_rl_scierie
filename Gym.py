@@ -63,5 +63,6 @@ class EnvGym(gym.Env) :
         done = False
         while not done:
             action, _ = model.predict(obs)
-            obs, _, done, _ = self.step(action)
-        self.indicateurs.plot(x="time", y=["reward"])
+            obs, _, done, _ = self.step(action, log_inds=True)
+        df = pd.DataFrame(self.indicateurs, columns=["time", "reward"])
+        df.plot(x="time", y=["reward"])

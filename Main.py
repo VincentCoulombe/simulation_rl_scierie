@@ -37,7 +37,9 @@ if __name__ == '__main__':
                  "RatioSechageAirLibre": 0.1 * 12 / 52,
                  "HresProdScieriesParSem": 44 + 44,
                  "VariationProdScierie": 0.1,
-                 "VariationTempsSechage": 0.1}
+                 "VariationTempsSechage": 0.1,
+                 "VariationDemandeVSProd" : 0.25
+                 } # Pourcentage de variation de la demande par rapport à la production de la scierie}
 
 
     # Pour faciliter le développement, on s'assure d'avoir toujours le mêmes
@@ -63,4 +65,4 @@ if __name__ == '__main__':
         print("Nb de déplacements de loader : ", len(Evenement[Evenement["Événement"] == "Début déplacement"]))
         print("Nb de déplacement par minutes : ", len(Evenement[Evenement["Événement"] == "Début déplacement"]) / (timer_après-timer_avant) * 60)
         print("Nb de déplacement par heures : ", len(Evenement[Evenement["Événement"] == "Début déplacement"]) / (timer_après-timer_avant) * 60 * 60)
-          
+        
