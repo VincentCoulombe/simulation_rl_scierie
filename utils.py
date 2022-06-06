@@ -9,7 +9,10 @@ import numpy as np
 
 def min_max_scaling(X,minPossible,maxPossible) :
     
-    return (np.array(X) - minPossible) / (maxPossible - minPossible)
+    data = np.array(X)
+    data = np.where(data < minPossible,minPossible,data)
+    data = np.where(data > maxPossible,maxPossible,data)
+    return (data - minPossible) / (maxPossible - minPossible)
     
 def get_action_space(paramSimu) : 
    
@@ -20,3 +23,14 @@ def get_state_space(paramSimu) :
     NbEspaceStateParProduits = 3
     return NbEspaceStateParProduits * len(paramSimu["df_produits"])
     
+if __name__ == '__main__': 
+    
+    X = [-1,0,1,2,3,4,5]
+    
+    print(min_max_scaling(X,0,4))
+    
+    Y = [1,2,3,4,5,6,7]
+    
+    Z = X + Y
+    
+    print(Z)

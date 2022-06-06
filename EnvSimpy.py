@@ -60,6 +60,7 @@ class EnvSimpy(simpy.Environment):
                 self.df_produits.loc[self.df_produits["produit"] == i,"temps sechage"] = regle["temps sechage"].values[0]
         
         
+        self.lstProdVsDemande = self.generate_demand()
         self.lesEmplacements = {}
         self.lesEmplacements["Sortie sciage"] = Emplacements(Nom = "Sortie sciage", env=self,capacity=self.paramSimu["CapaciteSortieSciage"])
         
@@ -109,19 +110,17 @@ class EnvSimpy(simpy.Environment):
         lstProduits = min_max_scaling(lstProduits,0,250)
         
         # Où on se situe par rapport à la demande
-        #print(self.generate_demand())
-        self.lstProdVsDemande = self.generate_demand() - self.df_produits["Quantité produite"]
-        print(self.lstProdVsDemande)
-        #print(self.generate_demand())
-
+        lstProdVsDemandeMinMax = min_max_scaling(self.lstProdVsDemande,-1000,1000)
         
-        return lstProduits
+        return np.concatenate((lstProduits,lstProdVsDemandeMinMax))
     
-    def generate_demand(self, obj_fin_simu: int):
-        return self.env.now/self.paramSimu["DureeSimulation"]*obj_fin_simu
+    def updateApresStep(self) :
+        
+        # La différence est en PMP à l'heure pour rester dans des ranges similaires avec le temps pour une longue simulation
+        self.lstProdVsDemande = (self.generate_demand() - self.df_produits["Quantité produite"])/self.now
     
-    def getRespectDemande(self): 
-        return [0]
+    def getRespectDemande(self) : 
+        return self.lstProdVsDemande
     
     def EnrEven(self,Evenement,NomLoader=None, Lot = None, Source = None, Destination = None) : 
 
@@ -179,6 +178,8 @@ class EnvSimpy(simpy.Environment):
             if self.lesLoader[key].ProchainTemps == self.now:
                 self.lesLoader[key].FinDeplacementLoader()               
                 
+        self.updateApresStep()
+        
         if self.now >= self.paramSimu["DureeSimulation"] :            
             self.EnrEven("Fin de la simulation")
             return True
@@ -273,32 +274,27 @@ if __name__ == '__main__':
     df_rulesDetails = pd.read_csv("DATA/rulesDetails.csv")
     df_produits = pd.concat([df_produits.iloc[0:5],df_produits.iloc[75:80]],ignore_index = True) # limiter à un sous-ensemble de produits
         
-    paramSimu = {}
-    
-    paramSimu["df_produits"] = df_produits
-    paramSimu["df_rulesDetails"] = df_rulesDetails    
-    
-    paramSimu["SimulationParContainer"] = False
-    paramSimu["DureeSimulation"] = 50 # 1 an = 8760
-    paramSimu["nbLoader"] = 1
-    paramSimu["nbSechoir"] = 4
-    paramSimu["ConserverListeEvenements"] = True # Si retire + rapide à l'exécution, mais perd le liste détaillée des choses qui se sont produites
+    paramSimu = {"df_produits": df_produits,
+             "df_rulesDetails": df_rulesDetails,
+             "SimulationParContainer": False,
+             "DureeSimulation": 100,
+             "nbLoader": 1,
+             "nbSechoir": 4,
+             "ConserverListeEvenements": True,
+             "CapaciteSortieSciage": 10,
+             "CapaciteSechageAirLibre": 0,
+             "CapaciteCours": 0,
+             "CapaciteSechoir": 1,
+             "TempsAttenteLoader": 1,
+             "TempsDeplacementLoader": 5,
+             "TempsSechageAirLibre": 7 * 24,
+             "RatioSechageAirLibre": 0.1 * 12 / 52,
+             "HresProdScieriesParSem": 44 + 44,
+             "VariationProdScierie": 0.1,  # Pourcentage de variation de la demande par rapport à la production de la scierie
+             "VariationTempsSechage": 0.1,
+             "VariationDemandeVSProd" : 0.25
+             }
 
-    paramSimu["CapaciteSortieSciage"] = 10
-    paramSimu["CapaciteSechageAirLibre"] = 0
-    paramSimu["CapaciteCours"] = 0
-    paramSimu["CapaciteSechoir"] = 1
-    #paramSimu["TempsInterArriveeSciage"] = 1
-    paramSimu["TempsAttenteLoader"] = 1 #0.05
-    paramSimu["TempsDeplacementLoader"] = 5 #0.05
-    paramSimu["TempsSechageAirLibre"] = 7*24
-    paramSimu["RatioSechageAirLibre"] = 0.1*12/52
-    
-    paramSimu["HresProdScieriesParSem"] = 44+44
-    paramSimu["VariationProdScierie"] = 0.1 # Pourcentage de variation de la production de la scierie par rapport aux chiffres généraux fournis
-    paramSimu["VariationTempsSechage"] = 0.1 # Pourcentage de variation du temps de séchage par rapport à la prévision
-    paramSimu["VariationDemandeVSProd"] = 0.25 # Pourcentage de variation de la demande par rapport à la production de la scierie
-  
     # Pour faciliter le développement, on s'assure d'avoir toujours le mêmes
     # nombres aléatoires d'une exécution à l'autre
     random.seed(1)
