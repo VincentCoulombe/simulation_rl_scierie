@@ -36,12 +36,14 @@ def ChoixLoader(env) :
         
         source = random.choice(lstChoixSource)
         
-        if env.lesEmplacements["Cours"].EstPlein() == False and source == "Sortie sciage" :
-            lstChoixDestination.append("Cours")
-        
-        if env.lesEmplacements["Séchage à l'air libre"].EstPlein() == False and source == "Sortie sciage" :
-            lstChoixDestination.append("Séchage à l'air libre")
-        
+        if env.paramSimu["CapaciteCours"] > 0 : 
+            if env.lesEmplacements["Cours"].EstPlein() == False and source == "Sortie sciage" :
+                lstChoixDestination.append("Cours")
+                
+        if env.paramSimu["CapaciteSechageAirLibre"] > 0 : 
+            if env.lesEmplacements["Séchage à l'air libre"].EstPlein() == False and source == "Sortie sciage" :
+                lstChoixDestination.append("Séchage à l'air libre")
+            
         for i in range(env.paramSimu["nbSechoir"]) : 
             if env.lesEmplacements["Préparation séchoir " + str(i+1)].EstPlein() == False :
                 lstChoixDestination.append("Préparation séchoir " + str(i+1))
