@@ -84,15 +84,20 @@ class Loader() :
         self.env.RewardActionInvalide = False
        
         source = "Sortie sciage"
-        lot = self.env.LienActionLot[action]
-        if lot == -1 :
-            action,lot = ActionValideAleatoire(self.env)
-            if lot == -1 : 
-                source = "Attente"
-            else : 
-                print("Action invalide demandée.  Remplacement par une action aléatoire.")
-                self.env.RewardActionInvalide = True
-                    
+        if action == -1 :
+            lot = -1
+            source = "Attente"
+        else :
+            lot = self.env.LienActionLot[action]
+            
+            if lot == -1 :
+                action,lot = ActionValideAleatoire(self.env)
+                if lot == -1 : 
+                    source = "Attente"
+                else : 
+                    print("Action invalide demandée.  Remplacement par une action aléatoire.")
+                    self.env.RewardActionInvalide = True
+                        
         destination = "Attente"
         for key in self.env.lesEmplacements.keys() : 
             if "Préparation séchoir" in key :

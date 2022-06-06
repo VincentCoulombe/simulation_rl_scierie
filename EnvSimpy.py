@@ -41,6 +41,7 @@ class EnvSimpy(simpy.Environment):
         self.EnrEven("Début simulation")
         self.DernierLot = 0
         self.pdLots = pd.DataFrame(columns=["Temps","Lot","produit","description","Emplacement","temps sechage"])
+#        self.npLots = np.array([["Temps","Lot","produit","description","Emplacement","temps sechage"]])
         
         # Ajouter le temps de séchage aux produits à partir de la règle (avec une valeur par défaut au cas ou la règle n'est pas trouvée)
         # Ajout par le fait même d'une demande par produits
@@ -178,6 +179,11 @@ class EnvSimpy(simpy.Environment):
             if self.lesLoader[key].ProchainTemps == self.now:
                 self.lesLoader[key].FinDeplacementLoader()               
                 
+        # Aucune action possible, le loader est tombé en attente, on attend qu'il se passe quelque chose avant de finalisé le step...
+        if max(self.LienActionLot) == -1 and self.now < self.paramSimu["DureeSimulation"]:
+            _ = self.getState() # Pour mettre à jour LienActionLot
+            return self.stepSimpy(-1)
+                
         self.updateApresStep()
         
         if self.now >= self.paramSimu["DureeSimulation"] :            
@@ -277,7 +283,7 @@ if __name__ == '__main__':
     paramSimu = {"df_produits": df_produits,
              "df_rulesDetails": df_rulesDetails,
              "SimulationParContainer": False,
-             "DureeSimulation": 100,
+             "DureeSimulation": 500,
              "nbLoader": 1,
              "nbSechoir": 4,
              "ConserverListeEvenements": True,
@@ -315,6 +321,7 @@ if __name__ == '__main__':
     
     # juste pour faciliter débuggage...
     pdLots = env.pdLots
+    npLots = env.npLots
     df_rulesDetails = env.df_rulesDetails
     Evenement = env.Evenements
 
