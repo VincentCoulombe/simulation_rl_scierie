@@ -19,8 +19,8 @@ from utils import *
 ################### MANQUE SIMPY POUR WAGON VS SECHAGE #########################
 ################### gérer temps attente loader comme du monde #########################
 ################### attention pour ne pas qu'il sèche complètement dans la cours #########################
-
-
+# Pour l'instant envoi dans le premier séchoir qui a de la place si plusieurs libres
+# pourquoi le temps de séchage semble diminuer presqu'uniformément par produit alors que les produits ne sont pas faits en même temps
 
 class EnvSimpy(simpy.Environment):
     def __init__(self,paramSimu,**kwargs):
@@ -41,8 +41,14 @@ class EnvSimpy(simpy.Environment):
         self.pdLots = pd.DataFrame(columns=["Temps","Lot","produit","description","Emplacement","temps sechage"])
         
         # Ajouter le temps de séchage aux produits à partir de la règle (avec une valeur par défaut au cas ou la règle n'est pas trouvée)
+        # Ajout par le fait même d'une demande par produits
         self.df_produits["temps sechage"] = 100
+        self.df_produits["demande"] = 0
         for i in self.df_produits["produit"] :
+            
+            variation = 1 + random.random() * 2 * paramSimu["VariationDemandeVSProd"] - paramSimu["VariationDemandeVSProd"]
+            self.df_produits.loc[self.df_produits["produit"] == i,"demande"] =  (max(0,self.df_produits[self.df_produits["produit"] == i]["production epinette"].values[0])+max(0,self.df_produits[self.df_produits["produit"] == i]["production sapin"].values[0]))/2 /7/24 * paramSimu["DureeSimulation"] * variation
+            
             regle = self.df_produits[self.df_produits["produit"] == i]["regle"].values[0]
             regle = self.df_rulesDetails[self.df_rulesDetails["regle"] == regle]
             if len(regle) == 0 :
@@ -70,24 +76,38 @@ class EnvSimpy(simpy.Environment):
         for i in range(self.paramSimu["nbLoader"]) : 
             self.lesLoader["Loader " + str(i+1)] = Loader(NomLoader = "Loader " + str(i+1), env = self)
 
+    def generate_demand(self):
+        return self.now/self.paramSimu["DureeSimulation"]*self.df_produits["demande"]
        
     def getState(self) : 
         
         # Temps de séchage des produits qui sont disponibles au déplacement
         lstProduits = []
+        self.LienActionLot = []
         for produit in self.df_produits["produit"] :
             
-            lstTemps = [temps for temps in self.pdLots[self.pdLots["produit"] == produit]["temps sechage"]]
+            lstTemps = [temps for temps in self.pdLots[(self.pdLots["produit"] == produit) & (self.pdLots["Emplacement"] == "Sortie sciage")]["temps sechage"]]
+            lstlot = [temps for temps in self.pdLots[(self.pdLots["produit"] == produit) & (self.pdLots["Emplacement"] == "Sortie sciage")]["Lot"]]
             
             if len(lstTemps) == 0 : 
                 lstTemps.append(250)
-                
+                lstlot.append(-1)
+            
+            argSort = np.argsort(np.array(lstTemps))
+            lstlot = list(np.array(lstlot)[argSort])
             lstTemps.sort()
             
-            lstProduits.append(lstTemps[0]) # Min            
+            lstProduits.append(lstTemps[0]) # Min   
+            self.LienActionLot.append(lstlot[0])
             lstProduits.append(lstTemps[int((len(lstTemps)-1)/2)]) # médiane            
+            self.LienActionLot.append(lstlot[int((len(lstTemps)-1)/2)])
             lstProduits.append(lstTemps[-1]) # Max        
+            self.LienActionLot.append(lstlot[-1])
         lstProduits = min_max_scaling(lstProduits,0,250)
+        
+        # Où on se situe par rapport à la demande
+        #print(self.generate_demand())
+
         
         return lstProduits
     
@@ -264,6 +284,7 @@ if __name__ == '__main__':
     paramSimu["HresProdScieriesParSem"] = 44+44
     paramSimu["VariationProdScierie"] = 0.1 # Pourcentage de variation de la production de la scierie par rapport aux chiffres généraux fournis
     paramSimu["VariationTempsSechage"] = 0.1 # Pourcentage de variation du temps de séchage par rapport à la prévision
+    paramSimu["VariationDemandeVSProd"] = 0.25 # Pourcentage de variation de la demande par rapport à la production de la scierie
   
     # Pour faciliter le développement, on s'assure d'avoir toujours le mêmes
     # nombres aléatoires d'une exécution à l'autre
@@ -274,6 +295,7 @@ if __name__ == '__main__':
     env = EnvSimpy(paramSimu)
                
     done = False
+    state = env.getState()
     while not done: 
         action = ChoixLoader(env)
         done = env.stepSimpy(action)
