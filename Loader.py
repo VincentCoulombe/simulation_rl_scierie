@@ -15,6 +15,16 @@ import EnvSimpy
 # retourne lot, source, destination selon un state passé en paramètre
 def ChoixLoader(env) : 
 
+    if max(env.LienActionLot) == -1 :
+        return -1
+
+    lot = -1
+    while lot == -1 :
+        action = random.randint(0,3*(len(env.paramSimu["df_produits"])-1))        
+        lot = env.LienActionLot[action]
+            
+    return action
+
     lstChoixSource = []
     lstChoixDestination = []
     
@@ -68,9 +78,21 @@ class Loader() :
         
     def DeplacerLoader(self, action) : 
        
-        lot, source, destination = action
+       #lot,source,destination = action 
+       
+        
+        source = "Sortie sciage"
+        lot = self.env.LienActionLot[action]
+        if lot == -1 :
+            source = "Attente"
+        
+        destination = "Attente"
+        for key in self.env.lesEmplacements.keys() : 
+            if "Préparation séchoir" in key :
+                if not self.env.lesEmplacements[key].EstPlein() :
+                    destination = self.env.lesEmplacements[key].Nom
             
-        if destination == "Attente" : 
+        if destination == "Attente" or source == "Attente": 
             if not self.bAttente :
                 self.bAttente = True 
                 self.env.EnrEven("Mise en attente d'un loader",NomLoader = self.NomLoader)
@@ -94,13 +116,10 @@ class Loader() :
             self.destination = destination
             self.lot = lot
             
-            #self.env.process(self.FinDeplacementLoader(duree,lot,source,destination))
-            
             self.ProchainTemps += duree
             
     def FinDeplacementLoader(self) : #,duree,lot,source,destination) : 
         
-        #yield self.env.timeout(duree)            
         
         if self.lot != None : 
         
