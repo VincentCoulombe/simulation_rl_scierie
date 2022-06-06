@@ -12,8 +12,6 @@ class EnvGym(gym.Env) :
         
         super().__init__(**kwargs)
         self.paramSimu = paramSimu
-        self.boucle()     # Juste une patch pour tester reset et state... doit êre remplacé par vrai RL 
-        
         self.action_space = spaces.Discrete(nb_actions)
         self.low = np.array([state_min for _ in range(state_len)], dtype=np.float32)
         self.high = np.array([state_max for _ in range(state_len)], dtype=np.float32)
@@ -73,8 +71,7 @@ class EnvGym(gym.Env) :
         while not done: 
             action = ChoixLoader(state)
             state, _, done, _ = self.step(action)
+            
 
 if __name__ == '__main__': 
-    
-
     pass
