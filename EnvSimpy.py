@@ -40,7 +40,7 @@ class EnvSimpy(simpy.Environment):
         self.lesLoader = {}
         for i in range(self.paramSimu["nbSechoir"]) : 
             self.lesLoader["Loader " + str(i+1)] = Loader(NomLoader = "Loader " + str(i+1), env = self)
-                    
+            
     def EnrEven(self,Evenement,NomLoader=None, Lot = None, Source = None, Destination = None) : 
 
         if self.paramSimu["ConserverListeEvenements"] : 
