@@ -80,12 +80,14 @@ class Loader() :
        
        #lot,source,destination = action 
        
-        
         source = "Sortie sciage"
         lot = self.env.LienActionLot[action]
         if lot == -1 :
             source = "Attente"
-        
+            self.env.RewardActionInvalide = True
+        else:
+            self.env.RewardActionInvalide = False
+                
         destination = "Attente"
         for key in self.env.lesEmplacements.keys() : 
             if "Préparation séchoir" in key :

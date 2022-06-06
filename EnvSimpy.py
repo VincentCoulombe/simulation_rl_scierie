@@ -26,6 +26,8 @@ class EnvSimpy(simpy.Environment):
     def __init__(self,paramSimu,**kwargs):
         super().__init__(**kwargs)
         
+        self.RewardActionInvalide = False
+        
         # Définition de l'information sur les règles
         self.df_rulesDetails = paramSimu["df_rulesDetails"]
         nouveau = pd.DataFrame([["AUTRES",100,215000,245000]],columns=self.df_rulesDetails.columns)
@@ -44,6 +46,7 @@ class EnvSimpy(simpy.Environment):
         # Ajout par le fait même d'une demande par produits
         self.df_produits["temps sechage"] = 100
         self.df_produits["demande"] = 0
+        self.df_produits["Quantité produite"] = 0
         for i in self.df_produits["produit"] :
             
             variation = 1 + random.random() * 2 * paramSimu["VariationDemandeVSProd"] - paramSimu["VariationDemandeVSProd"]
@@ -106,6 +109,9 @@ class EnvSimpy(simpy.Environment):
         lstProduits = min_max_scaling(lstProduits,0,250)
         
         # Où on se situe par rapport à la demande
+        #print(self.generate_demand())
+        self.lstProdVsDemande = self.generate_demand() - self.df_produits["Quantité produite"]
+        print(self.lstProdVsDemande)
         #print(self.generate_demand())
 
         
@@ -230,6 +236,7 @@ def Sciage(env,indexProduit) :
         env.LogCapacite(env.lesEmplacements["Sortie sciage"]) 
 
 def Sechage(env,lot,destination) : 
+    produit = env.pdLots[env.pdLots["Lot"] == lot]["produit"].values[0]
     tempsSechage = env.pdLots[env.pdLots["Lot"] == lot]["temps sechage"].values[0]
     tempsMin = tempsSechage * (1-env.paramSimu["VariationTempsSechage"])
     tempsMax = tempsSechage * (1+env.paramSimu["VariationTempsSechage"])
@@ -239,9 +246,12 @@ def Sechage(env,lot,destination) :
     yield env.timeout(random.triangular(tempsMin,tempsMax,tempsSechage))
     
     env.EnrEven("Fin séchage",Lot = lot, Destination = destination)
+    env.pdLots.loc[env.pdLots["Lot"] == lot,"Emplacement"] = "Sortie séchoir"
+    env.df_produits.loc[env.df_produits["produit"] == produit,"Quantité produite"] += env.df_produits.loc[env.df_produits["produit"] == produit,"volume paquet"]
     
     env.lesEmplacements[destination].release(env)
-
+       
+    
 def SechageAirLibre(env,lot,destination): 
     
     #env.EnrEven("Début séchage à l'air libre",Lot = lot, Destination = destination)
@@ -266,9 +276,9 @@ if __name__ == '__main__':
     paramSimu["df_rulesDetails"] = df_rulesDetails    
     
     paramSimu["SimulationParContainer"] = False
-    paramSimu["DureeSimulation"] = 1000 # 1 an = 8760
+    paramSimu["DureeSimulation"] = 50 # 1 an = 8760
     paramSimu["nbLoader"] = 1
-    paramSimu["nbSechoir"] = 2
+    paramSimu["nbSechoir"] = 4
     paramSimu["ConserverListeEvenements"] = True # Si retire + rapide à l'exécution, mais perd le liste détaillée des choses qui se sont produites
 
     paramSimu["CapaciteSortieSciage"] = 10
