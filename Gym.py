@@ -80,6 +80,9 @@ class EnvGym(gym.Env) :
             model.learn(total_timesteps=nb_timestep, reset_num_timesteps=False, tb_log_name="PPO")
             if save:
                 model.save(f"{models_dir}/{nb_timestep*i}")
+                
+        print("Début de l'évaluation du modèle final (pas nécessairement le meilleur)...")
+        self.evaluate_model(model)
             
     def evaluate_model(self, model):
         obs = self.reset()
