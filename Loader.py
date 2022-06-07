@@ -52,7 +52,7 @@ class Loader() :
                 if lot == -1 : 
                     source = "Attente"
                 else : 
-                    print("Action invalide demandée.  Remplacement par une action aléatoire.")
+                    #print("Action invalide demandée.  Remplacement par une action aléatoire.")
                     self.env.RewardActionInvalide = True
                         
         destination = "Attente"
@@ -96,9 +96,6 @@ class Loader() :
             self.env.EnrEven("Fin déplacement",NomLoader = self.NomLoader,Lot = self.lot,Source = self.source, Destination = self.destination)
             self.env.npLots[self.lot][self.env.cLots["Emplacement"]] = self.destination
             self.env.LogCapacite(self.env.lesEmplacements[self.destination]) 
-            
-            # Procédé au séchage à l'air libre
-            self.env.process(EnvSimpy.SechageAirLibre(self.env,self.lot,self.destination))
             
             # Procédé au séchage
             if "Préparation séchoir" in self.destination : 
