@@ -11,18 +11,18 @@ import tensorflow as tf
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 
-class TensorboardCallback(BaseCallback):
-    """
-    Custom callback for plotting additional values in tensorboard.
-    """
-    def __init__(self, verbose=0):
-        self.is_tb_set = False
-        super(TensorboardCallback, self).__init__(verbose)
+# class TensorboardCallback(BaseCallback):
+#     """
+#     Custom callback for plotting additional values in tensorboard.
+#     """
+#     def __init__(self, verbose=0):
+#         self.is_tb_set = False
+#         super(TensorboardCallback, self).__init__(verbose)
 
-    def _on_step(self) -> bool:
-        summary = tf.Summary(value=[tf.Summary.Value(tag='random_value', simple_value=self.env.reward)])
-        self.locals['writer'].add_summary(summary, self.num_timesteps)
-        return True
+#     def _on_step(self) -> bool:
+#         summary = tf.Summary(value=[tf.Summary.Value(tag='random_value', simple_value=self.env.reward)])
+#         self.locals['writer'].add_summary(summary, self.num_timesteps)
+#         return True
     
 class EnvGym(gym.Env) : 
     
