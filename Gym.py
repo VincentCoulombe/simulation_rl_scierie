@@ -79,7 +79,7 @@ class EnvGym(gym.Env) :
         self.reset()
         for i in range(nb_episode):
             if log:
-                model.learn(total_timesteps=nb_timestep, reset_num_timesteps=False, tb_log_name="PPO", callback=PlottingCallback(logdir))
+                model.learn(total_timesteps=nb_timestep, reset_num_timesteps=False, tb_log_name="PPO")
             else:
                 model.learn(total_timesteps=nb_timestep, reset_num_timesteps=False)
             if save:
