@@ -42,7 +42,7 @@ class EnvSimpy(simpy.Environment):
         self.df_rulesDetails["Volume courant sciage"] = 0
         self.df_rulesDetails["Temps déplacement courant"] = 0
         
-        self.df_produits = paramSimu["df_produits"]
+        self.np_produits = paramSimu["df_produits"]
         self.paramSimu = paramSimu
         self.Evenements = np.asarray([["Temps","Événement","Loader","Source", "Destination","Lot","description"]],dtype='U25')
         self.EnrEven("Début simulation")
@@ -51,22 +51,25 @@ class EnvSimpy(simpy.Environment):
         
         # Ajouter le temps de séchage aux produits à partir de la règle (avec une valeur par défaut au cas ou la règle n'est pas trouvée)
         # Ajout par le fait même d'une demande par produits
-        self.df_produits["temps sechage"] = 100
-        self.df_produits["demande"] = 0
-        self.df_produits["Quantité produite"] = 0
-        for i in self.df_produits["produit"] :
+        self.np_produits["temps sechage"] = 100
+        self.np_produits["demande"] = 0
+        self.np_produits["Quantité produite"] = 0
+        for i in self.np_produits["produit"] :
             
             variation = 1 + random.random() * 2 * paramSimu["VariationDemandeVSProd"] - paramSimu["VariationDemandeVSProd"]
-            self.df_produits.loc[self.df_produits["produit"] == i,"demande"] =  (max(0,self.df_produits[self.df_produits["produit"] == i]["production epinette"].values[0])+max(0,self.df_produits[self.df_produits["produit"] == i]["production sapin"].values[0]))/2 /7/24 * paramSimu["DureeSimulation"] * variation
+            self.np_produits.loc[self.np_produits["produit"] == i,"demande"] =  (max(0,self.np_produits[self.np_produits["produit"] == i]["production epinette"].values[0])+max(0,self.np_produits[self.np_produits["produit"] == i]["production sapin"].values[0]))/2 /7/24 * paramSimu["DureeSimulation"] * variation
             
-            regle = self.df_produits[self.df_produits["produit"] == i]["regle"].values[0]
+            regle = self.np_produits[self.np_produits["produit"] == i]["regle"].values[0]
             regle = self.df_rulesDetails[self.df_rulesDetails["regle"] == regle]
             if len(regle) == 0 :
                 print("Incapable de trouver la règle pour le produit", i)
             else :               
-                self.df_produits.loc[self.df_produits["produit"] == i,"temps sechage"] = regle["temps sechage"].values[0]
-        
-        
+                self.np_produits.loc[self.np_produits["produit"] == i,"temps sechage"] = regle["temps sechage"].values[0]
+        self.cProd = {}
+        for indice,colonne in enumerate(self.np_produits.columns) : 
+            self.cProd[colonne] = indice
+        self.np_produits = np.vstack((np.asarray(self.np_produits.columns,dtype='U25'),self.np_produits.to_numpy(dtype='U25')))
+                
         self.lstProdVsDemande = self.generate_demand()
         self.lesEmplacements = {}
         self.lesEmplacements["Sortie sciage"] = Emplacements(Nom = "Sortie sciage", env=self,capacity=self.paramSimu["CapaciteSortieSciage"])
@@ -80,28 +83,33 @@ class EnvSimpy(simpy.Environment):
         for i in range(self.paramSimu["nbSechoir"]) : 
             self.lesEmplacements["Préparation séchoir " + str(i+1)] = Emplacements(Nom = "Préparation séchoir " + str(i+1), env=self,capacity=self.paramSimu["CapaciteSechoir"])
         
-        for i in self.df_produits.index :
-            self.process(Sciage(self,i))        
+        for i in range(1,len(self.np_produits)) :
+            self.process(Sciage(self,self.np_produits[i]))        
         
         self.lesLoader = {}
         for i in range(self.paramSimu["nbLoader"]) : 
             self.lesLoader["Loader " + str(i+1)] = Loader(NomLoader = "Loader " + str(i+1), env = self)
 
+
     def generate_demand(self):
-        return self.now/self.paramSimu["DureeSimulation"]*self.df_produits["demande"]
-       
+        return self.now/self.paramSimu["DureeSimulation"]*self.np_produits[1:,self.cProd["demande"]].astype(float)
+        
+
     def getState(self) : 
         
         # Temps de séchage des produits qui sont disponibles au déplacement
         lstProduits = []
         self.LienActionLot = []
-        for produit in self.df_produits["produit"] :            
-            produit = str(produit)
+        for produit in self.np_produits[:,self.cProd["produit"]] :            
+            
+            # ne pas considérer l'entête
+            if produit == "produit" : 
+                continue
             
             lstTemps = []
             lstlot = []
             for temps in self.npLots[(self.npLots[:,self.cLots["produit"]] == produit) & (self.npLots[:,self.cLots["Emplacement"]] == "Sortie sciage")] : 
-                lstTemps.append(int(temps[self.cLots["temps sechage"]]))
+                lstTemps.append(float(temps[self.cLots["temps sechage"]]))
                 lstlot.append(int(temps[self.cLots["Lot"]]))
                                                   
             if len(lstTemps) == 0 : 
@@ -118,6 +126,7 @@ class EnvSimpy(simpy.Environment):
             self.LienActionLot.append(lstlot[int((len(lstTemps)-1)/2)])
             lstProduits.append(lstTemps[-1]) # Max        
             self.LienActionLot.append(lstlot[-1])
+        
         lstProduits = min_max_scaling(lstProduits,0,250)
         
         # Où on se situe par rapport à la demande
@@ -127,8 +136,10 @@ class EnvSimpy(simpy.Environment):
     
     def updateApresStep(self) :
         
+        
+        
         # La différence est en PMP à l'heure pour rester dans des ranges similaires avec le temps pour une longue simulation
-        self.lstProdVsDemande = (self.generate_demand() - self.df_produits["Quantité produite"])/self.now
+        self.lstProdVsDemande = (self.generate_demand() - self.np_produits[1:,self.cProd["Quantité produite"]].astype(float))/self.now
     
     def getRespectDemande(self) : 
         return self.lstProdVsDemande
@@ -151,7 +162,7 @@ class EnvSimpy(simpy.Environment):
         if Emplacement.count == Emplacement.capacity and len(Emplacement.queue)==0: 
             self.EnrEven("Capacité maximale atteinte", Destination=Emplacement.Nom)
         
-    def AjoutSortieSciage(self,indexProduit,produit,description,volumePaquet,epaisseur,tempsSechage) :
+    def AjoutSortieSciage(self,produit,description,volumePaquet,epaisseur,tempsSechage) :
         self.DernierLot += 1
         emplacement = "Sortie sciage"
         nouveaunp = np.asarray([[self.now,self.DernierLot,produit,description,emplacement,tempsSechage]],dtype='U25')
@@ -227,19 +238,19 @@ class Emplacements(simpy.Resource) :
         else :
             return False
 
-def Sciage(env,indexProduit) :
+def Sciage(env,np_produit) :
     
-    prodMoyPMPSem = (max(0,env.df_produits.iloc[indexProduit]["production epinette"]) + max(0,env.df_produits.iloc[indexProduit]["production sapin"])) / 2
+    produit = int(np_produit[env.cProd["produit"]])
+    description = np_produit[env.cProd["description"]]
+    volumePaquet = float(np_produit[env.cProd["volume paquet"]])
+    epaisseur = float(np_produit[env.cProd["epaisseur"]])
+    tempsSechage = float(np_produit[env.cProd["temps sechage"]])
+    
+    prodMoyPMPSem = (max(0,float(np_produit[env.cProd["production epinette"]])) + max(0,float(np_produit[env.cProd["production sapin"]]))) / 2
     prodMoyPMPHr = prodMoyPMPSem / env.paramSimu["HresProdScieriesParSem"]
-    dureeMoy1Paquet = env.df_produits.iloc[indexProduit]["volume paquet"] / prodMoyPMPHr
+    dureeMoy1Paquet = volumePaquet / prodMoyPMPHr
     dureeMin1Paquet = dureeMoy1Paquet * (1-env.paramSimu["VariationProdScierie"])
-    dureeMax1Paquet = dureeMoy1Paquet * (1+env.paramSimu["VariationProdScierie"])
-    
-    produit = env.df_produits.iloc[indexProduit]["produit"]
-    description =  env.df_produits.iloc[indexProduit]["description"]
-    volumePaquet = env.df_produits.iloc[indexProduit]["volume paquet"]
-    epaisseur = env.df_produits.iloc[indexProduit]["epaisseur"]
-    tempsSechage = env.df_produits.iloc[indexProduit]["temps sechage"]
+    dureeMax1Paquet = dureeMoy1Paquet * (1+env.paramSimu["VariationProdScierie"])   
     
     if dureeMoy1Paquet == 0 :
         print("Calcul de la vitesse de production impossible pour le produit",indexProduit)
@@ -251,7 +262,7 @@ def Sciage(env,indexProduit) :
 
         yield env.lesEmplacements["Sortie sciage"].request()         
 
-        env.AjoutSortieSciage(indexProduit,produit,description,volumePaquet,epaisseur,tempsSechage)
+        env.AjoutSortieSciage(produit,description,volumePaquet,epaisseur,tempsSechage)
 
         env.LogCapacite(env.lesEmplacements["Sortie sciage"]) 
 
@@ -267,14 +278,13 @@ def Sechage(env,lot,destination) :
     
     env.EnrEven("Fin séchage",Lot = lot, Destination = destination)
     env.npLots[lot][env.cLots["Emplacement"]] = "Sortie séchoir"
-    env.df_produits.loc[env.df_produits["produit"] == produit,"Quantité produite"] += env.df_produits.loc[env.df_produits["produit"] == produit,"volume paquet"]
+    env.np_produits[env.np_produits[:,env.cProd["produit"]] == str(produit),env.cProd["Quantité produite"]] = str(int(env.np_produits[env.np_produits[:,env.cProd["produit"]] == str(produit),env.cProd["Quantité produite"]]) + int(env.np_produits[env.np_produits[:,env.cProd["produit"]] == str(produit),env.cProd["volume paquet"]]))
     
     env.lesEmplacements[destination].release(env)
        
     
 def SechageAirLibre(env,lot,destination): 
     
-    #env.EnrEven("Début séchage à l'air libre",Lot = lot, Destination = destination)
     yield env.timeout(env.paramSimu["TempsSechageAirLibre"])
     
     env.npLots[lot][env.cLots["temps sechage"]] = str(float(env.npLots[lot][env.cLots["temps sechage"]]) * (1- env.paramSimu["RatioSechageAirLibre"]))
@@ -315,9 +325,11 @@ if __name__ == '__main__':
     timer_avant = time.time()
     
     env = EnvSimpy(paramSimu)
+    
+    timer_avant = time.time()
                
     done = False
-    state = env.getState()
+    _ = env.getState()
     while not done: 
         action = ChoixLoader(env)
         done = env.stepSimpy(action)
@@ -330,6 +342,7 @@ if __name__ == '__main__':
     npLots = env.npLots
     df_rulesDetails = env.df_rulesDetails
     Evenement = env.Evenements
+    df_produits = env.np_produits
 
     print("Temps d'exécution : ", timer_après-timer_avant)
     
