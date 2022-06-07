@@ -55,14 +55,14 @@ if __name__ == '__main__':
     timer_après = time.time()
 
     # juste pour faciliter débuggage...
-    pdLots = envRL.env.pdLots
+    npLots = envRL.env.npLots
     Evenement = envRL.env.Evenements
     df_rulesDetails = envRL.env.df_rulesDetails
 
     print("Temps d'exécution : ", timer_après-timer_avant)
 
     if paramSimu["ConserverListeEvenements"] : 
-        print("Nb de déplacements de loader : ", len(Evenement[Evenement["Événement"] == "Début déplacement"]))
-        print("Nb de déplacement par minutes : ", len(Evenement[Evenement["Événement"] == "Début déplacement"]) / (timer_après-timer_avant) * 60)
-        print("Nb de déplacement par heures : ", len(Evenement[Evenement["Événement"] == "Début déplacement"]) / (timer_après-timer_avant) * 60 * 60)
+        print("Nb de déplacements de loader : ", len(Evenement[Evenement[:,1] == "Début déplacement"]))
+        print("Nb de déplacement par minutes : ", len(Evenement[Evenement[:,1] == "Début déplacement"]) / (timer_après-timer_avant) * 60)
+        print("Nb de déplacement par heures : ", len(Evenement[Evenement[:,1] == "Début déplacement"]) / (timer_après-timer_avant) * 60 * 60)
         
