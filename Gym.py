@@ -8,11 +8,8 @@ import matplotlib.pyplot as plt
 import os
 import time
 
-from stable_baselines3 import PPO, PPO2
-from stable_baselines3 import SAC
+from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
-
-model = SAC("MlpPolicy", "Pendulum-v0", tensorboard_log="/tmp/sac/", verbose=1)
 
 class TensorboardCallback(BaseCallback):
     """
