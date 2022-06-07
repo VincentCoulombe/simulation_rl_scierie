@@ -12,7 +12,6 @@ import numpy as np
 import time
 from Gym import *
 from utils import *
-from stable_baselines3 import PPO
 
 if __name__ == '__main__': 
         
@@ -50,7 +49,8 @@ if __name__ == '__main__':
 
     envRL = EnvGym(paramSimu, get_action_space(paramSimu), get_state_space(paramSimu), state_min = 0, state_max = 1)
     model = PPO('MlpPolicy', envRL)
-    envRL.evaluate_model(model)
+    # envRL.evaluate_model(model)
+    envRL.train_model(nb_timestep=paramSimu["DureeSimulation"], nb_episode=10, log=True, save=False)
 
     timer_après = time.time()
 

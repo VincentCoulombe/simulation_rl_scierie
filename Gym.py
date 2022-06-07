@@ -5,6 +5,9 @@ import gym
 from gym import spaces
 from EnvSimpy import *
 import matplotlib.pyplot as plt
+from stable_baselines3 import PPO
+import os
+import time
 
 
 class EnvGym(gym.Env) : 
@@ -27,7 +30,7 @@ class EnvGym(gym.Env) :
     
     def _update_reward(self) -> float:
         
-        self.respect_demande = sum(x for x in self.env.getRespectDemande() if x > 0)
+        self.respect_demande = -sum(x for x in self.env.getRespectDemande() if x > 0)
         return 1.0*self.respect_demande + 0.1*0. #......
                 
     def reset(self) -> np.array: 
@@ -58,6 +61,25 @@ class EnvGym(gym.Env) :
         while not done: 
             action = ChoixLoader(self.env)
             state, _, done, _ = self.step(action)
+            
+    def train_model(self, nb_timestep: int, nb_episode: int, log: bool=False, save: bool=False):
+        if log:
+            logdir = f"logs/{int(time.time())}/"
+            if not os.path.exists(logdir):
+                os.makedirs(logdir)
+            model = PPO('MlpPolicy', self, verbose=1, tensorboard_log=logdir)
+        else:
+            model = PPO('MlpPolicy', self)
+        if save:
+            models_dir = f"models/{int(time.time())}/"
+            if not os.path.exists(models_dir):
+                os.makedirs(models_dir)
+             
+        self.reset()
+        for i in range(nb_episode):
+            model.learn(total_timesteps=nb_timestep, reset_num_timesteps=False, tb_log_name="PPO")
+            if save:
+                model.save(f"{models_dir}/{nb_timestep*i}")
             
     def evaluate_model(self, model):
         obs = self.reset()
