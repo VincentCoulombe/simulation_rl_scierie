@@ -26,6 +26,13 @@ class EnvSimpy(simpy.Environment):
     def __init__(self,paramSimu,**kwargs):
         super().__init__(**kwargs)
         
+        self.cLots = {"Temps" : 0,
+                      "Lot" : 1,
+                      "produit" : 2,
+                      "description" : 3,
+                      "Emplacement" : 4,
+                      "temps sechage" : 5}
+        
         self.RewardActionInvalide = False
         
         # Définition de l'information sur les règles
@@ -37,11 +44,10 @@ class EnvSimpy(simpy.Environment):
         
         self.df_produits = paramSimu["df_produits"]
         self.paramSimu = paramSimu
-        self.Evenements = pd.DataFrame()
+        self.Evenements = np.asarray([["Temps","Événement","Loader","Source", "Destination","Lot","description"]],dtype='U25')
         self.EnrEven("Début simulation")
         self.DernierLot = 0
-        self.pdLots = pd.DataFrame(columns=["Temps","Lot","produit","description","Emplacement","temps sechage"])
-#        self.npLots = np.array([["Temps","Lot","produit","description","Emplacement","temps sechage"]])
+        self.npLots = np.array([["Temps","Lot","produit","description","Emplacement","temps sechage"]],dtype='U25')
         
         # Ajouter le temps de séchage aux produits à partir de la règle (avec une valeur par défaut au cas ou la règle n'est pas trouvée)
         # Ajout par le fait même d'une demande par produits
@@ -89,11 +95,15 @@ class EnvSimpy(simpy.Environment):
         # Temps de séchage des produits qui sont disponibles au déplacement
         lstProduits = []
         self.LienActionLot = []
-        for produit in self.df_produits["produit"] :
+        for produit in self.df_produits["produit"] :            
+            produit = str(produit)
             
-            lstTemps = [temps for temps in self.pdLots[(self.pdLots["produit"] == produit) & (self.pdLots["Emplacement"] == "Sortie sciage")]["temps sechage"]]
-            lstlot = [temps for temps in self.pdLots[(self.pdLots["produit"] == produit) & (self.pdLots["Emplacement"] == "Sortie sciage")]["Lot"]]
-            
+            lstTemps = []
+            lstlot = []
+            for temps in self.npLots[(self.npLots[:,self.cLots["produit"]] == produit) & (self.npLots[:,self.cLots["Emplacement"]] == "Sortie sciage")] : 
+                lstTemps.append(int(temps[self.cLots["temps sechage"]]))
+                lstlot.append(int(temps[self.cLots["Lot"]]))
+                                                  
             if len(lstTemps) == 0 : 
                 lstTemps.append(250)
                 lstlot.append(-1)
@@ -130,11 +140,11 @@ class EnvSimpy(simpy.Environment):
             if Lot == None : 
                 description = None
             else : 
-                pdlot_temp = self.pdLots[self.pdLots["Lot"] == Lot][["description"]].to_numpy()
-                description = pdlot_temp[0,0]
+                description = self.npLots[Lot][self.cLots["description"]]
         
-            nouveau = pd.DataFrame([[self.now,Evenement,NomLoader, Source, Destination, Lot,description]],columns=["Temps","Événement","Loader","Source", "Destination","Lot","description"])
-            self.Evenements = pd.concat([self.Evenements,nouveau],axis=0,ignore_index = True)
+            nouveau = np.asarray([[self.now,Evenement,NomLoader, Source, Destination, Lot,description]],dtype='U25')
+            self.Evenements = np.vstack((self.Evenements,nouveau))
+            
         
     def LogCapacite(self,Emplacement) :
         
@@ -144,12 +154,12 @@ class EnvSimpy(simpy.Environment):
     def AjoutSortieSciage(self,indexProduit,produit,description,volumePaquet,epaisseur,tempsSechage) :
         self.DernierLot += 1
         emplacement = "Sortie sciage"
-        nouveau = pd.DataFrame([[self.now,self.DernierLot,produit,description,emplacement,tempsSechage,False]],columns=["Temps","Lot","produit","description","Emplacement","temps sechage","Air libre terminé ?"])
+        nouveaunp = np.asarray([[self.now,self.DernierLot,produit,description,emplacement,tempsSechage]],dtype='U25')
         
         if self.paramSimu["SimulationParContainer"] : 
             pass
         
-        self.pdLots = pd.concat([self.pdLots,nouveau],axis=0,ignore_index = True)
+        self.npLots = np.vstack((self.npLots,nouveaunp))
         self.EnrEven("Sortie sciage",Lot = self.DernierLot)
 
     def RetLoaderCourant(self) : 
@@ -246,8 +256,8 @@ def Sciage(env,indexProduit) :
         env.LogCapacite(env.lesEmplacements["Sortie sciage"]) 
 
 def Sechage(env,lot,destination) : 
-    produit = env.pdLots[env.pdLots["Lot"] == lot]["produit"].values[0]
-    tempsSechage = env.pdLots[env.pdLots["Lot"] == lot]["temps sechage"].values[0]
+    produit = int(env.npLots[lot][env.cLots["produit"]])
+    tempsSechage = float(env.npLots[lot][env.cLots["temps sechage"]])
     tempsMin = tempsSechage * (1-env.paramSimu["VariationTempsSechage"])
     tempsMax = tempsSechage * (1+env.paramSimu["VariationTempsSechage"])
     
@@ -256,7 +266,7 @@ def Sechage(env,lot,destination) :
     yield env.timeout(random.triangular(tempsMin,tempsMax,tempsSechage))
     
     env.EnrEven("Fin séchage",Lot = lot, Destination = destination)
-    env.pdLots.loc[env.pdLots["Lot"] == lot,"Emplacement"] = "Sortie séchoir"
+    env.npLots[lot][env.cLots["Emplacement"]] = "Sortie séchoir"
     env.df_produits.loc[env.df_produits["produit"] == produit,"Quantité produite"] += env.df_produits.loc[env.df_produits["produit"] == produit,"volume paquet"]
     
     env.lesEmplacements[destination].release(env)
@@ -267,10 +277,7 @@ def SechageAirLibre(env,lot,destination):
     #env.EnrEven("Début séchage à l'air libre",Lot = lot, Destination = destination)
     yield env.timeout(env.paramSimu["TempsSechageAirLibre"])
     
-    TempsSechage = env.pdLots[env.pdLots["Lot"] == lot]["temps sechage"]
-    
-    env.pdLots.loc[env.pdLots["Lot"] == lot,"temps sechage"] = TempsSechage * (1- env.paramSimu["RatioSechageAirLibre"])
-
+    env.npLots[lot][env.cLots["temps sechage"]] = str(float(env.npLots[lot][env.cLots["temps sechage"]]) * (1- env.paramSimu["RatioSechageAirLibre"]))
 
 if __name__ == '__main__': 
        
@@ -283,7 +290,7 @@ if __name__ == '__main__':
     paramSimu = {"df_produits": df_produits,
              "df_rulesDetails": df_rulesDetails,
              "SimulationParContainer": False,
-             "DureeSimulation": 500,
+             "DureeSimulation": 5000,
              "nbLoader": 1,
              "nbSechoir": 4,
              "ConserverListeEvenements": True,
@@ -320,7 +327,6 @@ if __name__ == '__main__':
     timer_après = time.time()
     
     # juste pour faciliter débuggage...
-    pdLots = env.pdLots
     npLots = env.npLots
     df_rulesDetails = env.df_rulesDetails
     Evenement = env.Evenements
@@ -328,6 +334,6 @@ if __name__ == '__main__':
     print("Temps d'exécution : ", timer_après-timer_avant)
     
     if paramSimu["ConserverListeEvenements"] : 
-        print("Nb de déplacements de loader : ", len(Evenement[Evenement["Événement"] == "Début déplacement"]))
-        print("Nb de déplacement par minutes : ", len(Evenement[Evenement["Événement"] == "Début déplacement"]) / (timer_après-timer_avant) * 60)
-        print("Nb de déplacement par heures : ", len(Evenement[Evenement["Événement"] == "Début déplacement"]) / (timer_après-timer_avant) * 60 * 60)
+        print("Nb de déplacements de loader : ", len(Evenement[Evenement[:,1] == "Début déplacement"]))
+        print("Nb de déplacement par minutes : ", len(Evenement[Evenement[:,1] == "Début déplacement"]) / (timer_après-timer_avant) * 60)
+        print("Nb de déplacement par heures : ", len(Evenement[Evenement[:,1] == "Début déplacement"]) / (timer_après-timer_avant) * 60 * 60)

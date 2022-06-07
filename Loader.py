@@ -27,48 +27,6 @@ def ChoixLoader(env) :
            
     action,lot = ActionValideAleatoire(env)
     return action
-
-    lstChoixSource = []
-    lstChoixDestination = []
-    
-    if len(env.pdLots[env.pdLots["Emplacement"] == "Sortie sciage"]) != 0 :
-        lstChoixSource.append("Sortie sciage")
-        
-    if len(env.pdLots[env.pdLots["Emplacement"] == "Cours"]) != 0 :
-        lstChoixSource.append("Cours")
-    
-    if len(env.pdLots[env.pdLots["Emplacement"] == "Séchage à l'air libre"]) != 0 :
-        lstChoixSource.append("Séchage à l'air libre")    
-    ################### MANQUE CONTRAINTE SECHAGE AIR LIBRE TERMINER #########################
-    
-    
-    if len(lstChoixSource) == 0 : 
-        return np.nan, "Attente","Attente"
-    
-    else : 
-        
-        source = random.choice(lstChoixSource)
-        
-        if env.paramSimu["CapaciteCours"] > 0 : 
-            if env.lesEmplacements["Cours"].EstPlein() == False and source == "Sortie sciage" :
-                lstChoixDestination.append("Cours")
-                
-        if env.paramSimu["CapaciteSechageAirLibre"] > 0 : 
-            if env.lesEmplacements["Séchage à l'air libre"].EstPlein() == False and source == "Sortie sciage" :
-                lstChoixDestination.append("Séchage à l'air libre")
-            
-        for i in range(env.paramSimu["nbSechoir"]) : 
-            if env.lesEmplacements["Préparation séchoir " + str(i+1)].EstPlein() == False :
-                lstChoixDestination.append("Préparation séchoir " + str(i+1))
-        
-        if len(lstChoixDestination) == 0 : 
-            return np.nan, "Attente", "Attente"    
-        else :
-            destination = random.choice(lstChoixDestination)
-                        
-            lot = env.pdLots[env.pdLots["Emplacement"] == source]["Lot"].to_numpy()
-            lot = random.choice(lot)                    
-            return lot, source, destination
         
 class Loader() : 
     def __init__(self,NomLoader,env):
@@ -76,7 +34,6 @@ class Loader() :
         self.bAttente = False
         self.env = env
         self.ProchainTemps = 0
-        #self.LoaderEmplacement = Emplacements(Nom = NomLoader, env=env,capacity=1)
         self.lot = None
         
     def DeplacerLoader(self, action) : 
@@ -120,7 +77,7 @@ class Loader() :
                 
             self.bAttente = False
             self.env.EnrEven("Début déplacement",NomLoader = self.NomLoader,Lot = lot, Source = source, Destination = destination)
-            self.env.pdLots.loc[self.env.pdLots["Lot"] == lot,"Emplacement"] = self.NomLoader
+            self.env.npLots[lot][self.env.cLots["Emplacement"]] = self.NomLoader
             self.env.lesEmplacements[source].release(self.env)
             
             duree = random.expovariate(1/self.env.paramSimu["TempsDeplacementLoader"])
@@ -137,7 +94,7 @@ class Loader() :
         if self.lot != None : 
         
             self.env.EnrEven("Fin déplacement",NomLoader = self.NomLoader,Lot = self.lot,Source = self.source, Destination = self.destination)
-            self.env.pdLots.loc[self.env.pdLots["Lot"] == self.lot,"Emplacement"] = self.destination
+            self.env.npLots[self.lot][self.env.cLots["Emplacement"]] = self.destination
             self.env.LogCapacite(self.env.lesEmplacements[self.destination]) 
             
             # Procédé au séchage à l'air libre
