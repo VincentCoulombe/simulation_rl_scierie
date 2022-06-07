@@ -9,22 +9,36 @@ import os
 import time
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
-import tensorflow as tf
+from stable_baselines.results_plotter import load_results, ts2xy
 
-class TensorboardCallback(BaseCallback):
+class PlottingCallback(BaseCallback):
     """
-    Custom callback for plotting additional values in tensorboard.
+    Callback for plotting the performance in realtime.
+
+    :param verbose: (int)
     """
-    def __init__(self, verbose=0):
-        self.is_tb_set = False
-        super(TensorboardCallback, self).__init__(verbose)
+    def __init__(self, log_dir, verbose=1):
+        super(PlottingCallback, self).__init__(verbose)
+        self._plot = None
+        self.log_dir = log_dir
 
     def _on_step(self) -> bool:
-        # value = np.random.random()
-        # summary = tf.Summary(value=[tf.Summary.Value(tag='random_value', simple_value=value)])
-        # self.locals['writer'].add_summary(summary, self.num_timesteps)
-        self.locals['writer'].add_summary(self.env.reward, self.num_timesteps)
-        return True
+        # get the monitor's data
+        x, y = ts2xy(load_results(self.log_dir), 'timesteps')
+        if self._plot is None: # make the plot
+            plt.ion()
+            fig = plt.figure(figsize=(6,3))
+            ax = fig.add_subplot(111)
+            line, = ax.plot(x, y)
+            self._plot = (line, ax, fig)
+            plt.show()
+        else: # update and rescale the plot
+            self._plot[0].set_data(x, y)
+            self._plot[-2].relim()
+            self._plot[-2].set_xlim([self.locals["total_timesteps"] * -0.02, 
+                                    self.locals["total_timesteps"] * 1.02])
+            self._plot[-2].autoscale_view(True,True,True)
+            self._plot[-1].canvas.draw()
     
 class EnvGym(gym.Env) : 
     
@@ -35,7 +49,7 @@ class EnvGym(gym.Env) :
         self.action_space = spaces.Discrete(nb_actions)
         self.low = np.array([state_min for _ in range(state_len)], dtype=np.float32)
         self.high = np.array([state_max for _ in range(state_len)], dtype=np.float32)
-        self.observation_space = spaces.Box(low=self.low, high=self.high, shape=(40,), dtype=np.float32)
+        self.observation_space = spaces.Box(low=self.low, high=self.high, dtype=np.float32)
         
     def generate_demand(self, obj_fin_simu: int):
         return self.env.now/self.paramSimu["DureeSimulation"]*obj_fin_simu
@@ -46,8 +60,7 @@ class EnvGym(gym.Env) :
     
     def _update_reward(self) -> None:
         
-        # self.respect_inv = sum(x**2 for x in self.env.getRespectInventaire())
-        self.respect_inv = sum(x for x in self.env.getRespectDemande() if x>0)
+        self.respect_inv = -sum(x**2 for x in self.env.getRespectInventaire())
         self.reward = self.respect_inv
                 
     def reset(self) -> np.array: 
@@ -80,7 +93,7 @@ class EnvGym(gym.Env) :
             action = ChoixLoader(self.env)
             state, _, done, _ = self.step(action)
             
-    def train_model(self, nb_timestep: int, nb_episode: int, log: bool=False, save: bool=False):
+    def train_model(self, nb_timestep: int, nb_episode: int, log: bool=True, save: bool=False):
         if log:
             logdir = f"logs/{int(time.time())}/"
             if not os.path.exists(logdir):
@@ -95,7 +108,10 @@ class EnvGym(gym.Env) :
              
         self.reset()
         for i in range(nb_episode):
-            model.learn(total_timesteps=nb_timestep, reset_num_timesteps=False, tb_log_name="PPO", callback=TensorboardCallback())
+            if log:
+                model.learn(total_timesteps=nb_timestep, reset_num_timesteps=False, tb_log_name="PPO", callback=PlottingCallback(logdir))
+            else:
+                model.learn(total_timesteps=nb_timestep, reset_num_timesteps=False)
             if save:
                 model.save(f"{models_dir}/{nb_timestep*i}")
                 

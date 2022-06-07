@@ -48,8 +48,8 @@ if __name__ == '__main__':
     timer_avant = time.time()
     envRL = EnvGym(paramSimu, get_action_space(paramSimu), get_state_space(paramSimu), state_min = 0, state_max = 1)
     model = PPO('MlpPolicy', envRL)
-    envRL.evaluate_model(model)
-    #envRL.train_model(nb_timestep=paramSimu["DureeSimulation"], nb_episode=2, log=True, save=False)
+    # envRL.evaluate_model(model)
+    envRL.train_model(nb_timestep=paramSimu["DureeSimulation"], nb_episode=2, log=True, save=False)
 
     timer_après = time.time()
 
@@ -58,10 +58,5 @@ if __name__ == '__main__':
     Evenement = envRL.env.Evenements
     df_rulesDetails = envRL.env.df_rulesDetails
 
-    print("Temps d'exécution : ", timer_après-timer_avant)
-
-    if paramSimu["ConserverListeEvenements"] : 
-        print("Nb de déplacements de loader : ", len(Evenement[Evenement[:,1] == "Début déplacement"]))
-        print("Nb de déplacement par minutes : ", len(Evenement[Evenement[:,1] == "Début déplacement"]) / (timer_après-timer_avant) * 60)
-        print("Nb de déplacement par heures : ", len(Evenement[Evenement[:,1] == "Début déplacement"]) / (timer_après-timer_avant) * 60 * 60)
+    print(f"Temps d'exécution : {timer_après-timer_avant:.2f}")
         
