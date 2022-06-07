@@ -65,15 +65,15 @@ class EnvGym(gym.Env) :
     def train_model(self, nb_timestep: int, nb_episode: int, log: bool=False, save: bool=False):
         if log:
             logdir = f"logs/{int(time.time())}/"
-            if not os.path.exists(models_dir):
-                os.makedirs(models_dir)
+            if not os.path.exists(logdir):
+                os.makedirs(logdir)
             model = PPO('MlpPolicy', self, verbose=1, tensorboard_log=logdir)
         else:
             model = PPO('MlpPolicy', self)
         if save:
             models_dir = f"models/{int(time.time())}/"
-            if not os.path.exists(logdir):
-                os.makedirs(logdir)
+            if not os.path.exists(models_dir):
+                os.makedirs(models_dir)
              
         self.reset()
         for i in range(nb_episode):
