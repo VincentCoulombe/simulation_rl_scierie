@@ -61,7 +61,7 @@ class EnvSimpy(simpy.Environment):
         for i in self.np_produits["produit"] :
             
             variation = 1 + random.random() * 2 * paramSimu["VariationDemandeVSProd"] - paramSimu["VariationDemandeVSProd"]
-            self.np_produits.loc[self.np_produits["produit"] == i,"demande"] =  random.random() #(max(0,self.np_produits[self.np_produits["produit"] == i]["production epinette"].values[0])+max(0,self.np_produits[self.np_produits["produit"] == i]["production sapin"].values[0]))/2 /7/24 * paramSimu["DureeSimulation"] * variation
+            self.np_produits.loc[self.np_produits["produit"] == i,"demande"] =  0.1 #(max(0,self.np_produits[self.np_produits["produit"] == i]["production epinette"].values[0])+max(0,self.np_produits[self.np_produits["produit"] == i]["production sapin"].values[0]))/2 /7/24 * paramSimu["DureeSimulation"] * variation
             
             regle = self.np_produits[self.np_produits["produit"] == i]["regle"].values[0]
             regle = self.df_rulesDetails[self.df_rulesDetails["regle"] == regle]
@@ -133,7 +133,7 @@ class EnvSimpy(simpy.Environment):
         #lstProdVsDemandeMinMax = min_max_scaling(self.lstProdVsDemande,-1000,1000)
         
         # Est-ce que les stocks sont stables dans la cours
-        lstProdVsDemandeMinMax = min_max_scaling(self.lstProdVsDemande.astype(float),-1000,1000)
+        lstProdVsDemandeMinMax = min_max_scaling(self.lstProdVsDemande.astype(float),-25000,25000)
         
         return np.concatenate(([self.PropEpinettesSortieSciage],lstProdVsDemandeMinMax))
     
@@ -319,7 +319,7 @@ if __name__ == '__main__':
     paramSimu = {"df_produits": df_produits,
              "df_rulesDetails": df_rulesDetails,
              "SimulationParContainer": False,
-             "DureeSimulation": 50,
+             "DureeSimulation": 5000,
              "nbLoader": 1,
              "nbSechoir": 4,
              "ConserverListeEvenements": True,
