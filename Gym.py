@@ -20,9 +20,10 @@ class TensorboardCallback(BaseCallback):
         super(TensorboardCallback, self).__init__(verbose)
 
     def _on_step(self) -> bool:
-        value = np.random.random()
-        summary = tf.Summary(value=[tf.Summary.Value(tag='random_value', simple_value=value)])
-        self.locals['writer'].add_summary(summary, self.num_timesteps)
+        # value = np.random.random()
+        # summary = tf.Summary(value=[tf.Summary.Value(tag='random_value', simple_value=value)])
+        # self.locals['writer'].add_summary(summary, self.num_timesteps)
+        self.locals['writer'].add_summary(self.env.reward, self.num_timesteps)
         return True
     
 class EnvGym(gym.Env) : 
