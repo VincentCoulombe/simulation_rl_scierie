@@ -32,8 +32,7 @@ class EnvGym(gym.Env) :
     def _update_reward(self) -> None:
         
         self.respect_inv = -sum(x**2 for x in self.env.getRespectInventaire())
-        self.reward = 2
-        # self.reward = self.respect_inv
+        self.reward = self.respect_inv
                 
     def reset(self) -> np.array: 
         
