@@ -37,6 +37,8 @@ class EnvSimpy(simpy.Environment):
         
         self.RewardActionInvalide = False
         
+        self.PropEpinettesSortieSciage = 0.5
+        
         # Définition de l'information sur les règles
         self.df_rulesDetails = paramSimu["df_rulesDetails"]
         nouveau = pd.DataFrame([["AUTRES",100,215000,245000]],columns=self.df_rulesDetails.columns)
@@ -59,7 +61,7 @@ class EnvSimpy(simpy.Environment):
         for i in self.np_produits["produit"] :
             
             variation = 1 + random.random() * 2 * paramSimu["VariationDemandeVSProd"] - paramSimu["VariationDemandeVSProd"]
-            self.np_produits.loc[self.np_produits["produit"] == i,"demande"] =  (max(0,self.np_produits[self.np_produits["produit"] == i]["production epinette"].values[0])+max(0,self.np_produits[self.np_produits["produit"] == i]["production sapin"].values[0]))/2 /7/24 * paramSimu["DureeSimulation"] * variation
+            self.np_produits.loc[self.np_produits["produit"] == i,"demande"] =  random.random() #(max(0,self.np_produits[self.np_produits["produit"] == i]["production epinette"].values[0])+max(0,self.np_produits[self.np_produits["produit"] == i]["production sapin"].values[0]))/2 /7/24 * paramSimu["DureeSimulation"] * variation
             
             regle = self.np_produits[self.np_produits["produit"] == i]["regle"].values[0]
             regle = self.df_rulesDetails[self.df_rulesDetails["regle"] == regle]
@@ -72,7 +74,6 @@ class EnvSimpy(simpy.Environment):
             self.cProd[colonne] = indice
         self.np_produits = np.vstack((np.asarray(self.np_produits.columns,dtype='U25'),self.np_produits.to_numpy(dtype='U25')))
                 
-        self.lstProdVsDemande = self.generate_demand()
         self.lesEmplacements = {}
         self.lesEmplacements["Sortie sciage"] = Emplacements(Nom = "Sortie sciage", env=self,capacity=self.paramSimu["CapaciteSortieSciage"])
         
@@ -92,10 +93,7 @@ class EnvSimpy(simpy.Environment):
         for i in range(self.paramSimu["nbLoader"]) : 
             self.lesLoader["Loader " + str(i+1)] = Loader(NomLoader = "Loader " + str(i+1), env = self)
 
-
-    def generate_demand(self):
-        return self.now/self.paramSimu["DureeSimulation"]*self.np_produits[1:,self.cProd["demande"]].astype(float)
-        
+        self.updateApresStep()
 
     def getState(self) : 
         
@@ -124,26 +122,39 @@ class EnvSimpy(simpy.Environment):
             
             lstProduits.append(lstTemps[0]) # Min   
             self.LienActionLot.append(lstlot[0])
-            lstProduits.append(lstTemps[int((len(lstTemps)-1)/2)]) # médiane            
-            self.LienActionLot.append(lstlot[int((len(lstTemps)-1)/2)])
-            lstProduits.append(lstTemps[-1]) # Max        
-            self.LienActionLot.append(lstlot[-1])
+            #lstProduits.append(lstTemps[int((len(lstTemps)-1)/2)]) # médiane            
+            #self.LienActionLot.append(lstlot[int((len(lstTemps)-1)/2)])
+            #lstProduits.append(lstTemps[-1]) # Max        
+            #self.LienActionLot.append(lstlot[-1])
         
-        lstProduits = min_max_scaling(lstProduits,0,250)
+        #lstProduits = min_max_scaling(lstProduits,0,250)
         
         # Où on se situe par rapport à la demande
-        lstProdVsDemandeMinMax = min_max_scaling(self.lstProdVsDemande,-1000,1000)
+        #lstProdVsDemandeMinMax = min_max_scaling(self.lstProdVsDemande,-1000,1000)
         
-        return np.concatenate((lstProduits,lstProdVsDemandeMinMax))
+        # Est-ce que les stocks sont stables dans la cours
+        lstProdVsDemandeMinMax = min_max_scaling(self.lstProdVsDemande.astype(float),-1000,1000)
+        
+        return np.concatenate(([self.PropEpinettesSortieSciage],lstProdVsDemandeMinMax))
     
     def updateApresStep(self) :
+        self.updateRespectInventaire()
+    
+    def updateRespectInventaire (self) :
+        # Quantité dans la cours de chaque produit en s'assurant d'avoir le produit dans la liste même si la quantité est à 0
+        volume = self.np_produits[1:,self.cProd["volume paquet"]].astype(int)
+        Lots = np.concatenate((self.np_produits[1:,self.cProd["produit"]],self.npLots[self.npLots[:,self.cLots["Emplacement"]] == "Sortie sciage",self.cLots["produit"]]))
+        unique,count = np.unique(Lots,return_counts = True)        
+        count = (count-1) * volume
         
-        
+        # Proportions qu'on veut avoir dans la cours
+        proportionVoulu = self.np_produits[1:,self.cProd["demande"]].astype(float) * volume       
+        propotrionReelle = count
         
         # La différence est en PMP à l'heure pour rester dans des ranges similaires avec le temps pour une longue simulation
-        self.lstProdVsDemande = (self.generate_demand() - self.np_produits[1:,self.cProd["Quantité produite"]].astype(float))/self.now
+        self.lstProdVsDemande = (proportionVoulu - propotrionReelle)
     
-    def getRespectDemande(self) : 
+    def getRespectInventaire(self) : 
         return self.lstProdVsDemande
     
     def EnrEven(self,Evenement,NomLoader=None, Lot = None, Source = None, Destination = None) : 
@@ -308,11 +319,11 @@ if __name__ == '__main__':
     paramSimu = {"df_produits": df_produits,
              "df_rulesDetails": df_rulesDetails,
              "SimulationParContainer": False,
-             "DureeSimulation": 5000,
+             "DureeSimulation": 50,
              "nbLoader": 1,
-             "nbSechoir": 1,
+             "nbSechoir": 4,
              "ConserverListeEvenements": True,
-             "CapaciteSortieSciage": 10,
+             "CapaciteSortieSciage": 100,
              "CapaciteSechageAirLibre": 0,
              "CapaciteCours": 0,
              "CapaciteSechoir": 1,

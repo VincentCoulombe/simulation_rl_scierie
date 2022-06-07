@@ -17,7 +17,7 @@ def ActionValideAleatoire(env) :
         return -1, -1
     lot = -1
     while lot == -1 :
-        action = random.randint(0,3*(len(env.paramSimu["df_produits"])-1))        
+        action = random.randint(0,(len(env.paramSimu["df_produits"])-1))        
         lot = env.LienActionLot[action]
             
     return action, lot
