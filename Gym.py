@@ -5,11 +5,27 @@ import gym
 from gym import spaces
 from EnvSimpy import *
 import matplotlib.pyplot as plt
-from stable_baselines3 import PPO
 import os
 import time
+from stable_baselines3 import PPO
+from stable_baselines3.common.callbacks import BaseCallback
+import tensorflow as tf
 
+class TensorboardCallback(BaseCallback):
+    """
+    Custom callback for plotting additional values in tensorboard.
+    """
+    def __init__(self, verbose=0):
+        self.is_tb_set = False
+        super(TensorboardCallback, self).__init__(verbose)
 
+    def _on_step(self) -> bool:
+        # value = np.random.random()
+        # summary = tf.Summary(value=[tf.Summary.Value(tag='random_value', simple_value=value)])
+        # self.locals['writer'].add_summary(summary, self.num_timesteps)
+        self.locals['writer'].add_summary(self.env.reward, self.num_timesteps)
+        return True
+    
 class EnvGym(gym.Env) : 
     
     def __init__(self, paramSimu: dict, nb_actions: int, state_len: int, state_min: float, state_max: float, *args, **kwargs):
@@ -19,40 +35,42 @@ class EnvGym(gym.Env) :
         self.action_space = spaces.Discrete(nb_actions)
         self.low = np.array([state_min for _ in range(state_len)], dtype=np.float32)
         self.high = np.array([state_max for _ in range(state_len)], dtype=np.float32)
-        self.observation_space = spaces.Box(low=self.low, high=self.high, dtype=np.float32)
+        self.observation_space = spaces.Box(low=self.low, high=self.high, shape=(40,), dtype=np.float32)
         
     def generate_demand(self, obj_fin_simu: int):
         return self.env.now/self.paramSimu["DureeSimulation"]*obj_fin_simu
        
-    def _update_observation(self) -> np.array:
-
-        return self.env.getState() #Méthode de la simulation, state normalisé
-    
-    def _update_reward(self) -> float:
+    def _update_observation(self) -> None:
         
-        self.respect_demande = -sum(x for x in self.env.getRespectDemande() if x > 0)
-        return 1.0*self.respect_demande + 0.1*0. #......
+        self.state = self.env.getState() #Méthode de la simulation, state normalisé
+    
+    def _update_reward(self) -> None:
+        
+        # self.respect_inv = sum(x**2 for x in self.env.getRespectInventaire())
+        self.respect_inv = sum(x for x in self.env.getRespectDemande() if x>0)
+        self.reward = self.respect_inv
                 
     def reset(self) -> np.array: 
         
         self.env = EnvSimpy(self.paramSimu) # Nouvelle simulation simpy       
         self.done = False
         self.info = {}
-        self.indicateurs = []                
-        return self._update_observation()    
+        self.indicateurs = []  
+        self._update_observation()         
+        return self.state   
     
     def step (self, action, log_inds: bool=False) -> tuple: 
 
         self.done = self.env.stepSimpy(action)
         
-        reward = self._update_reward()
-        state = self._update_observation()
+        self._update_reward()
+        self._update_observation()
         
         # logger les indicateurs pertinents 
         if log_inds:       
-            self.indicateurs.append([self.env.now, reward])
+            self.indicateurs.append([self.env.now, self.reward])
         
-        return state, reward, self.done, self.info
+        return self.state, self.reward, self.done, self.info
     
     def boucle(self) : 
         
@@ -77,9 +95,12 @@ class EnvGym(gym.Env) :
              
         self.reset()
         for i in range(nb_episode):
-            model.learn(total_timesteps=nb_timestep, reset_num_timesteps=False, tb_log_name="PPO")
+            model.learn(total_timesteps=nb_timestep, reset_num_timesteps=False, tb_log_name="PPO", callback=TensorboardCallback())
             if save:
                 model.save(f"{models_dir}/{nb_timestep*i}")
+                
+        print("Début de l'évaluation du modèle final (pas nécessairement le meilleur)...")
+        self.evaluate_model(model)
             
     def evaluate_model(self, model):
         obs = self.reset()
@@ -90,3 +111,6 @@ class EnvGym(gym.Env) :
         df = pd.DataFrame(self.indicateurs, columns=["time", "reward"])
         df.plot(x="time", y=["reward"])
         plt.show()
+        print(f"Meilleur reward : {df['reward'].max():.2f}")
+        print(f"Reward moyen : {df['reward'].mean():.2f}")
+        print(f"Reward final : {df['reward'].iloc[-1]:.2f}")
