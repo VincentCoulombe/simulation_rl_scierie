@@ -5,11 +5,27 @@ import gym
 from gym import spaces
 from EnvSimpy import *
 import matplotlib.pyplot as plt
-from stable_baselines3 import PPO
 import os
 import time
 
+from stable_baselines3 import PPO, PPO2
+from stable_baselines3 import SAC
+from stable_baselines3.common.callbacks import BaseCallback
 
+model = SAC("MlpPolicy", "Pendulum-v0", tensorboard_log="/tmp/sac/", verbose=1)
+
+class TensorboardCallback(BaseCallback):
+    """
+    Custom callback for plotting additional values in tensorboard.
+    """
+    def __init__(self, verbose=0):
+        self.is_tb_set = False
+        super(TensorboardCallback, self).__init__(verbose)
+
+    def _on_step(self) -> bool:
+        self.locals['writer'].add_summary(self.env.reward, self.num_timesteps)
+        return True
+    
 class EnvGym(gym.Env) : 
     
     def __init__(self, paramSimu: dict, nb_actions: int, state_len: int, state_min: float, state_max: float, *args, **kwargs):
@@ -24,14 +40,14 @@ class EnvGym(gym.Env) :
     def generate_demand(self, obj_fin_simu: int):
         return self.env.now/self.paramSimu["DureeSimulation"]*obj_fin_simu
        
-    def _update_observation(self) -> np.array:
-
-        return self.env.getState() #Méthode de la simulation, state normalisé
-    
-    def _update_reward(self) -> float:
+    def _update_observation(self) -> None:
         
-        self.respect_demande = -sum(x for x in self.env.getRespectDemande() if x > 0)
-        return 1.0*self.respect_demande + 0.1*0. #......
+        self.state = self.env.getState() #Méthode de la simulation, state normalisé
+    
+    def _update_reward(self) -> None:
+        
+        self.respect_inv = sum(x**2 for x in self.env.getRespectInventaire())
+        self.reward = self.respect_inv
                 
     def reset(self) -> np.array: 
         
@@ -45,14 +61,14 @@ class EnvGym(gym.Env) :
 
         self.done = self.env.stepSimpy(action)
         
-        reward = self._update_reward()
-        state = self._update_observation()
+        self._update_reward()
+        self._update_observation()
         
         # logger les indicateurs pertinents 
         if log_inds:       
-            self.indicateurs.append([self.env.now, reward])
+            self.indicateurs.append([self.env.now, self.reward])
         
-        return state, reward, self.done, self.info
+        return self.state, self.reward, self.done, self.info
     
     def boucle(self) : 
         
@@ -93,6 +109,6 @@ class EnvGym(gym.Env) :
         df = pd.DataFrame(self.indicateurs, columns=["time", "reward"])
         df.plot(x="time", y=["reward"])
         plt.show()
-        print(f"Meilleur reward : {df['reward'].max()}")
-        print(f"Reward moyen : {df['reward'].mean()}")
-        print(f"Reward final : {df['reward'].iloc[-1]}")
+        print(f"Meilleur reward : {df['reward'].max():.2f}")
+        print(f"Reward moyen : {df['reward'].mean():.2f}")
+        print(f"Reward final : {df['reward'].iloc[-1]:.2f}")
