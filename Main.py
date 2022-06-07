@@ -46,8 +46,6 @@ if __name__ == '__main__':
     random.seed(1)
 
     timer_avant = time.time()
-    print(f"state : {get_state_space(paramSimu)}")
-    print(f"actions : {get_action_space(paramSimu)}")
     envRL = EnvGym(paramSimu, get_action_space(paramSimu), get_state_space(paramSimu), state_min = 0, state_max = 1)
     model = PPO('MlpPolicy', envRL)
     # envRL.evaluate_model(model)
