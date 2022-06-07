@@ -21,6 +21,8 @@ from utils import *
 ################### attention pour ne pas qu'il sèche complètement dans la cours #########################
 # Pour l'instant envoi dans le premier séchoir qui a de la place si plusieurs libres
 # pourquoi le temps de séchage semble diminuer presqu'uniformément par produit alors que les produits ne sont pas faits en même temps
+# séchage ne part pas au bon moment
+# demande en paquet en PMP ?
 
 class EnvSimpy(simpy.Environment):
     def __init__(self,paramSimu,**kwargs):
@@ -172,6 +174,10 @@ class EnvSimpy(simpy.Environment):
         
         self.npLots = np.vstack((self.npLots,nouveaunp))
         self.EnrEven("Sortie sciage",Lot = self.DernierLot)
+        
+        # Procédé au séchage à l'air libre
+        self.process(SechageAirLibre(self,self.DernierLot))
+
 
     def RetLoaderCourant(self) : 
         
@@ -283,11 +289,13 @@ def Sechage(env,lot,destination) :
     env.lesEmplacements[destination].release(env)
        
     
-def SechageAirLibre(env,lot,destination): 
+def SechageAirLibre(env,lot): 
     
-    yield env.timeout(env.paramSimu["TempsSechageAirLibre"])
-    
-    env.npLots[lot][env.cLots["temps sechage"]] = str(float(env.npLots[lot][env.cLots["temps sechage"]]) * (1- env.paramSimu["RatioSechageAirLibre"]))
+    while env.npLots[lot][env.cLots["Emplacement"]] != "Sortie séchoir" :
+        
+        yield env.timeout(env.paramSimu["TempsSechageAirLibre"])
+        
+        env.npLots[lot][env.cLots["temps sechage"]] = str(float(env.npLots[lot][env.cLots["temps sechage"]]) * (1- env.paramSimu["RatioSechageAirLibre"]))
 
 if __name__ == '__main__': 
        
@@ -302,7 +310,7 @@ if __name__ == '__main__':
              "SimulationParContainer": False,
              "DureeSimulation": 5000,
              "nbLoader": 1,
-             "nbSechoir": 4,
+             "nbSechoir": 1,
              "ConserverListeEvenements": True,
              "CapaciteSortieSciage": 10,
              "CapaciteSechageAirLibre": 0,
