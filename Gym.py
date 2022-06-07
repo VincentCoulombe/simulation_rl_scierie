@@ -7,22 +7,22 @@ from EnvSimpy import *
 import matplotlib.pyplot as plt
 import os
 import time
-import tensorflow as tf
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
+import tensorflow as tf
 
-# class TensorboardCallback(BaseCallback):
-#     """
-#     Custom callback for plotting additional values in tensorboard.
-#     """
-#     def __init__(self, verbose=0):
-#         self.is_tb_set = False
-#         super(TensorboardCallback, self).__init__(verbose)
+class TensorboardCallback(BaseCallback):
+    """
+    Custom callback for plotting additional values in tensorboard.
+    """
+    def __init__(self, verbose=0):
+        self.is_tb_set = False
+        super(TensorboardCallback, self).__init__(verbose)
 
-#     def _on_step(self) -> bool:
-#         summary = tf.Summary(value=[tf.Summary.Value(tag='random_value', simple_value=self.env.reward)])
-#         self.locals['writer'].add_summary(summary, self.num_timesteps)
-#         return True
+    def _on_step(self) -> bool:
+        summary = tf.Summary(value=[tf.Summary.Value(tag='random_value', simple_value=self.env.reward)])
+        self.locals['writer'].add_summary(summary, self.num_timesteps)
+        return True
     
 class EnvGym(gym.Env) : 
     
@@ -33,7 +33,7 @@ class EnvGym(gym.Env) :
         self.action_space = spaces.Discrete(nb_actions)
         self.low = np.array([state_min for _ in range(state_len)], dtype=np.float32)
         self.high = np.array([state_max for _ in range(state_len)], dtype=np.float32)
-        self.observation_space = spaces.Box(low=self.low, high=self.high, dtype=np.float32)
+        self.observation_space = spaces.Box(low=self.low, high=self.high, shape=(40,), dtype=np.float32)
         
     def generate_demand(self, obj_fin_simu: int):
         return self.env.now/self.paramSimu["DureeSimulation"]*obj_fin_simu
@@ -44,7 +44,8 @@ class EnvGym(gym.Env) :
     
     def _update_reward(self) -> None:
         
-        self.respect_inv = sum(x**2 for x in self.env.getRespectInventaire())
+        # self.respect_inv = sum(x**2 for x in self.env.getRespectInventaire())
+        self.respect_inv = sum(x for x in self.env.getRespectDemande() if x>0)
         self.reward = self.respect_inv
                 
     def reset(self) -> np.array: 
@@ -52,8 +53,9 @@ class EnvGym(gym.Env) :
         self.env = EnvSimpy(self.paramSimu) # Nouvelle simulation simpy       
         self.done = False
         self.info = {}
-        self.indicateurs = []                
-        return self._update_observation()    
+        self.indicateurs = []  
+        self._update_observation()         
+        return self.state   
     
     def step (self, action, log_inds: bool=False) -> tuple: 
 
