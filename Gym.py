@@ -94,7 +94,7 @@ class EnvGym(gym.Env) :
              
         self.reset()
         for i in range(nb_episode):
-            model.learn(total_timesteps=nb_timestep, reset_num_timesteps=False, tb_log_name="PPO")
+            model.learn(total_timesteps=nb_timestep, reset_num_timesteps=False, tb_log_name="PPO", callback=TensorboardCallback())
             if save:
                 model.save(f"{models_dir}/{nb_timestep*i}")
                 
