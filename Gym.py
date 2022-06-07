@@ -93,3 +93,6 @@ class EnvGym(gym.Env) :
         df = pd.DataFrame(self.indicateurs, columns=["time", "reward"])
         df.plot(x="time", y=["reward"])
         plt.show()
+        print(f"Meilleur reward : {df['reward'].max()}")
+        print(f"Reward moyen : {df['reward'].mean()}")
+        print(f"Reward final : {df['reward'].iloc[-1]}")
