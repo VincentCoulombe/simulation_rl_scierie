@@ -7,7 +7,7 @@ from EnvSimpy import *
 import matplotlib.pyplot as plt
 import os
 import time
-
+import tensorflow as tf
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 
@@ -20,7 +20,8 @@ class TensorboardCallback(BaseCallback):
         super(TensorboardCallback, self).__init__(verbose)
 
     def _on_step(self) -> bool:
-        self.locals['writer'].add_summary(self.env.reward, self.num_timesteps)
+        summary = tf.Summary(value=[tf.Summary.Value(tag='random_value', simple_value=self.env.reward)])
+        self.locals['writer'].add_summary(summary, self.num_timesteps)
         return True
     
 class EnvGym(gym.Env) : 
