@@ -11,35 +11,6 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines.results_plotter import load_results, ts2xy
 
-class PlottingCallback(BaseCallback):
-    """
-    Callback for plotting the performance in realtime.
-
-    :param verbose: (int)
-    """
-    def __init__(self, log_dir, verbose=1):
-        super(PlottingCallback, self).__init__(verbose)
-        self._plot = None
-        self.log_dir = log_dir
-
-    def _on_step(self) -> bool:
-        # get the monitor's data
-        x, y = ts2xy(load_results(self.log_dir), 'timesteps')
-        if self._plot is None: # make the plot
-            plt.ion()
-            fig = plt.figure(figsize=(6,3))
-            ax = fig.add_subplot(111)
-            line, = ax.plot(x, y)
-            self._plot = (line, ax, fig)
-            plt.show()
-        else: # update and rescale the plot
-            self._plot[0].set_data(x, y)
-            self._plot[-2].relim()
-            self._plot[-2].set_xlim([self.locals["total_timesteps"] * -0.02, 
-                                    self.locals["total_timesteps"] * 1.02])
-            self._plot[-2].autoscale_view(True,True,True)
-            self._plot[-1].canvas.draw()
-    
 class EnvGym(gym.Env) : 
     
     def __init__(self, paramSimu: dict, nb_actions: int, state_len: int, state_min: float, state_max: float, *args, **kwargs):
@@ -61,7 +32,8 @@ class EnvGym(gym.Env) :
     def _update_reward(self) -> None:
         
         self.respect_inv = -sum(x**2 for x in self.env.getRespectInventaire())
-        self.reward = self.respect_inv
+        self.reward = 1
+        # self.reward = self.respect_inv
                 
     def reset(self) -> np.array: 
         
@@ -96,15 +68,13 @@ class EnvGym(gym.Env) :
     def train_model(self, nb_timestep: int, nb_episode: int, log: bool=True, save: bool=False):
         if log:
             logdir = f"logs/{int(time.time())}/"
-            if not os.path.exists(logdir):
-                os.makedirs(logdir)
+            os.makedirs(logdir, exist_ok=True)
             model = PPO('MlpPolicy', self, verbose=1, tensorboard_log=logdir)
         else:
             model = PPO('MlpPolicy', self)
         if save:
             models_dir = f"models/{int(time.time())}/"
-            if not os.path.exists(models_dir):
-                os.makedirs(models_dir)
+            os.makedirs(models_dir, exist_ok=True)
              
         self.reset()
         for i in range(nb_episode):
