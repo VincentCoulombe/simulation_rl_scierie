@@ -33,7 +33,7 @@ class EnvGym(gym.Env) :
     def _update_reward(self) -> None:
         
         self.respect_inv = -sum(x**2 for x in self.env.getRespectInventaire())
-        self.reward = self.respect_inv
+        self.reward = 10*self.respect_inv
                 
     def reset(self) -> np.array: 
         
@@ -114,8 +114,6 @@ class EnvGym(gym.Env) :
                 axs[i,j].set_title(f"Produit {counter+1}")
                 counter += 1
         plt.show()
-        print(f"total production voulue : {df[columns_names_prod_voulue].iloc[-1].sum():.2f}")
-        print(f"total production réelle : {df[columns_names_prod_reelle].max().sum():.2f}")
         print(f"Meilleur reward : {df['reward'].max():.2f}")
         print(f"Reward moyen : {df['reward'].mean():.2f}")
         print(f"Reward final : {df['reward'].iloc[-1]:.2f}")
