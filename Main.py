@@ -22,7 +22,7 @@ if __name__ == '__main__':
     paramSimu = {"df_produits": df_produits,
                  "df_rulesDetails": df_rulesDetails,
                  "SimulationParContainer": False,
-                 "DureeSimulation": 10000,
+                 "DureeSimulation": 1000,
                  "nbLoader": 1,
                  "nbSechoir": 2,
                  "ConserverListeEvenements": True,

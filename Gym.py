@@ -9,7 +9,6 @@ import os
 import time
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines.results_plotter import load_results, ts2xy
 
 class EnvGym(gym.Env) : 
     
