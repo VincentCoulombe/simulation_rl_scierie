@@ -154,8 +154,6 @@ class EnvSimpy(simpy.Environment):
         count = count-1
         count = count / max(1,sum(count))
         
-        print(sum(count))
-        
         # Proportions qu'on veut avoir dans la cours
         self.proportionVoulu = self.np_produits[1:,self.cProd["demande"]].astype(float)
         self.proportionReelle = count
