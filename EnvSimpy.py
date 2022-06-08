@@ -151,10 +151,13 @@ class EnvSimpy(simpy.Environment):
         volume = self.np_produits[1:,self.cProd["volume paquet"]].astype(int)
         Lots = np.concatenate((self.np_produits[1:,self.cProd["produit"]],self.npLots[self.npLots[:,self.cLots["Emplacement"]] == "Sortie sciage",self.cLots["produit"]]))
         unique,count = np.unique(Lots,return_counts = True)        
-        count = (count-1) * volume
+        count = count-1
+        count = count / max(1,sum(count))
+        
+        print(sum(count))
         
         # Proportions qu'on veut avoir dans la cours
-        self.proportionVoulu = self.np_produits[1:,self.cProd["demande"]].astype(float) * volume       
+        self.proportionVoulu = self.np_produits[1:,self.cProd["demande"]].astype(float)
         self.proportionReelle = count
         
         # La différence est en PMP à l'heure pour rester dans des ranges similaires avec le temps pour une longue simulation
@@ -325,7 +328,7 @@ if __name__ == '__main__':
     paramSimu = {"df_produits": df_produits,
              "df_rulesDetails": df_rulesDetails,
              "SimulationParContainer": False,
-             "DureeSimulation": 5000,
+             "DureeSimulation": 50,
              "nbLoader": 1,
              "nbSechoir": 4,
              "ConserverListeEvenements": True,
@@ -361,7 +364,6 @@ if __name__ == '__main__':
         _ = env.getState()
         
         voulu, relle = env.getProportions()
-        print(action, env.now,relle)
     
     
     timer_après = time.time()
