@@ -22,6 +22,8 @@ class EnvGym(gym.Env) :
         self.low = np.array([state_min for _ in range(state_len)], dtype=np.float32)
         self.high = np.array([state_max for _ in range(state_len)], dtype=np.float32)
         self.observation_space = spaces.Box(low=self.low, high=self.high, dtype=np.float32)
+        self.simu_counter = 0  
+        self.model = PPO('MlpPolicy', self)
         
     def generate_demand(self, obj_fin_simu: int):
         return self.env.now/self.paramSimu["DureeSimulation"]*obj_fin_simu
@@ -41,13 +43,17 @@ class EnvGym(gym.Env) :
         self.done = False
         self.info = {}
         self.indicateurs = []  
-        self._update_observation()         
+        self._update_observation() 
         return self.state   
     
     def step (self, action, log_inds: bool=False) -> tuple: 
 
         self.done = self.env.stepSimpy(action)
-        
+        if self.done:
+            self.simu_counter += 1
+            print(f"Simulation {self.simu_counter} terminée")
+            # self.evaluate_model()
+            
         self._update_reward()
         self._update_observation()
         
@@ -70,9 +76,7 @@ class EnvGym(gym.Env) :
         if log:
             logdir = f"logs/{int(time.time())}/"
             os.makedirs(logdir, exist_ok=True)
-            model = PPO('MlpPolicy', self, verbose=1, tensorboard_log=logdir)
-        else:
-            model = PPO('MlpPolicy', self)
+            self.model = PPO('MlpPolicy', self, verbose=1, tensorboard_log=logdir)
         if save:
             models_dir = f"models/{int(time.time())}/"
             os.makedirs(models_dir, exist_ok=True)
@@ -80,20 +84,20 @@ class EnvGym(gym.Env) :
         self.reset()
         for i in range(nb_episode):
             if log:
-                model.learn(total_timesteps=nb_timestep, reset_num_timesteps=False, tb_log_name="PPO")
+                self.model.learn(total_timesteps=nb_timestep, reset_num_timesteps=False, tb_log_name="PPO")
             else:
-                model.learn(total_timesteps=nb_timestep, reset_num_timesteps=False)
+                self.model.learn(total_timesteps=nb_timestep, reset_num_timesteps=False)
             if save:
-                model.save(f"{models_dir}/{nb_timestep*i}")
+                self.model.save(f"{models_dir}/{nb_timestep*i}")
                 
         print("Début de l'évaluation du modèle final (pas nécessairement le meilleur)...")
-        self.evaluate_model(model)
+        self.evaluate_model(self.model)
             
-    def evaluate_model(self, model):
+    def evaluate_model(self):
         obs = self.reset()
         done = False
         while not done:
-            action, _ = model.predict(obs)
+            action, _ = self.model.predict(obs)
             obs, _, done, _ = self.step(action, log_inds=True)
             
         nb_type_produit = get_action_space(self.env.paramSimu)
@@ -104,7 +108,7 @@ class EnvGym(gym.Env) :
         plt.plot(df["time"], df["reward"], label="reward", color="red")
         plt.title("Reward en fonction du Temps")        
 
-        fig, axs = plt.subplots(math.ceil(nb_type_produit/2), 2, sharex=True, sharey=True)
+        fig, axs = plt.subplots(math.ceil(nb_type_produit/2), 2, sharex=True, sharey=True, figsize=(100, 100))
         counter = 0
         for i in range(math.ceil(nb_type_produit/2)):
             for j in range(2):

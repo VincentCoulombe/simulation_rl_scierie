@@ -22,7 +22,7 @@ if __name__ == '__main__':
     paramSimu = {"df_produits": df_produits,
                  "df_rulesDetails": df_rulesDetails,
                  "SimulationParContainer": False,
-                 "DureeSimulation": 1000,
+                 "DureeSimulation": 100,
                  "nbLoader": 1,
                  "nbSechoir": 2,
                  "ConserverListeEvenements": True,
@@ -48,7 +48,7 @@ if __name__ == '__main__':
     timer_avant = time.time()
     envRL = EnvGym(paramSimu, get_action_space(paramSimu), get_state_space(paramSimu), state_min = 0, state_max = 1)
     model = PPO('MlpPolicy', envRL)
-    envRL.evaluate_model(model)
+    envRL.evaluate_model()
     # envRL.train_model(nb_timestep=paramSimu["DureeSimulation"], nb_episode=10, log=True, save=False)
 
     timer_après = time.time()
