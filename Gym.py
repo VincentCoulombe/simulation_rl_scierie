@@ -1,4 +1,5 @@
 import random
+import math
 import pandas as pd
 import numpy as np
 import gym
@@ -9,6 +10,7 @@ import os
 import time
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
+from utils import *
 
 class EnvGym(gym.Env) : 
     
@@ -50,8 +52,9 @@ class EnvGym(gym.Env) :
         self._update_observation()
         
         # logger les indicateurs pertinents 
-        if log_inds:       
-            self.indicateurs.append([self.env.now, self.reward])
+        if log_inds: 
+            production_voulue, production_reelle = self.env.getProportions()      
+            self.indicateurs.append([self.env.now, self.reward, *production_voulue, *production_reelle])
         
         return self.state, self.reward, self.done, self.info
     
@@ -92,9 +95,27 @@ class EnvGym(gym.Env) :
         while not done:
             action, _ = model.predict(obs)
             obs, _, done, _ = self.step(action, log_inds=True)
-        df = pd.DataFrame(self.indicateurs, columns=["time", "reward"])
-        df.plot(x="time", y=["reward"])
+            
+        nb_type_produit = get_action_space(self.env.paramSimu)
+        columns_names_prod_voulue = [f"production_voulue_produit{x}" for x in range(nb_type_produit)]
+        columns_names_prod_reelle = [f"production_reelle_produit{x}" for x in range(nb_type_produit)]
+        df = pd.DataFrame(self.indicateurs, columns=["time", "reward", *columns_names_prod_voulue, *columns_names_prod_reelle])
+        
+        plt.plot(df["time"], df["reward"], label="reward", color="red")
+        plt.title("Reward en fonction du Temps")        
+
+        fig, axs = plt.subplots(math.ceil(nb_type_produit/2), 2, sharex=True, sharey=True)
+        counter = 0
+        for i in range(math.ceil(nb_type_produit/2)):
+            for j in range(2):
+                axs[i,j].plot(df[f"production_voulue_produit{counter}"], label="production_voulue", color="blue")
+                axs[i,j].plot(df[f"production_reelle_produit{counter}"], label="production_reelle", color="green")
+                axs[i,j].legend()
+                axs[i,j].set_title(f"Produit {counter+1}")
+                counter += 1
         plt.show()
+        print(f"total production voulue : {df[columns_names_prod_voulue].iloc[-1].sum():.2f}")
+        print(f"total production réelle : {df[columns_names_prod_reelle].max().sum():.2f}")
         print(f"Meilleur reward : {df['reward'].max():.2f}")
         print(f"Reward moyen : {df['reward'].mean():.2f}")
         print(f"Reward final : {df['reward'].iloc[-1]:.2f}")

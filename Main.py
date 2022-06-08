@@ -48,8 +48,8 @@ if __name__ == '__main__':
     timer_avant = time.time()
     envRL = EnvGym(paramSimu, get_action_space(paramSimu), get_state_space(paramSimu), state_min = 0, state_max = 1)
     model = PPO('MlpPolicy', envRL)
-    # envRL.evaluate_model(model)
-    envRL.train_model(nb_timestep=paramSimu["DureeSimulation"], nb_episode=10, log=True, save=False)
+    envRL.evaluate_model(model)
+    # envRL.train_model(nb_timestep=paramSimu["DureeSimulation"], nb_episode=10, log=True, save=False)
 
     timer_après = time.time()
 
