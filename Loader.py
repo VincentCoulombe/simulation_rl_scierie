@@ -13,7 +13,7 @@ import EnvSimpy
 
 
 def ActionValideAleatoire(env) :
-    if max(env.LienActionLot) == -1 :
+    if not env.sourceDisponible() or not env.destinationDisponible() :
         return -1, -1
     lot = -1
     while lot == -1 :

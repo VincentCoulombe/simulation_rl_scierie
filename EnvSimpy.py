@@ -29,6 +29,7 @@ class EnvSimpy(simpy.Environment):
     def __init__(self,paramSimu,**kwargs):
         super().__init__(**kwargs)
         
+        self.nbStep = 0
         self.cLots = {"Temps" : 0,
                       "Lot" : 1,
                       "produit" : 2,
@@ -51,6 +52,7 @@ class EnvSimpy(simpy.Environment):
         self.paramSimu = paramSimu
         self.Evenements = np.asarray([["Temps","Événement","Loader","Source", "Destination","Lot","description"]],dtype='U50')
         self.EnrEven("Début simulation")
+        print("Début de la simulation")
         self.DernierLot = 0
         self.npLots = np.array([["Temps","Lot","produit","description","Emplacement","temps sechage"]],dtype='U50')
         
@@ -208,6 +210,18 @@ class EnvSimpy(simpy.Environment):
         
         return self.lesLoader[minNom], minTemps
 
+    def destinationDisponible(self) : 
+
+        for key in self.lesEmplacements.keys() : 
+            if "Préparation séchoir" in key :
+                if not self.lesEmplacements[key].EstPlein() :
+                    return True
+        return False
+
+    def sourceDisponible(self) : 
+        
+        return not (max(self.LienActionLot) == -1)
+
     def stepSimpy(self,action) : 
                 
         # Effectuer l'action déterminée par le RL
@@ -225,14 +239,17 @@ class EnvSimpy(simpy.Environment):
                 self.lesLoader[key].FinDeplacementLoader()               
                 
         # Aucune action possible, le loader est tombé en attente, on attend qu'il se passe quelque chose avant de finalisé le step...
-        if max(self.LienActionLot) == -1 and self.now < self.paramSimu["DureeSimulation"]:
+        if (not self.sourceDisponible() or not self.destinationDisponible()) and self.nbStep <= self.paramSimu["NbStepSimulation"] :
             _ = self.getState() # Pour mettre à jour LienActionLot
             return self.stepSimpy(-1)
                 
         self.updateApresStep()
         
-        if self.now >= self.paramSimu["DureeSimulation"] :            
+        self.nbStep += 1
+        
+        if self.nbStep > self.paramSimu["NbStepSimulation"] :            
             self.EnrEven("Fin de la simulation")
+            print("Simulation terminée")
             return True
         
         return False
@@ -326,7 +343,7 @@ if __name__ == '__main__':
     paramSimu = {"df_produits": df_produits,
              "df_rulesDetails": df_rulesDetails,
              "SimulationParContainer": False,
-             "DureeSimulation": 50,
+             "NbStepSimulation": 500,
              "nbLoader": 1,
              "nbSechoir": 4,
              "ConserverListeEvenements": True,
