@@ -151,7 +151,7 @@ class EnvSimpy(simpy.Environment):
         volume = self.np_produits[1:,self.cProd["volume paquet"]].astype(int)
         Lots = np.concatenate((self.np_produits[1:,self.cProd["produit"]],self.npLots[self.npLots[:,self.cLots["Emplacement"]] == "Sortie sciage",self.cLots["produit"]]))
         unique,count = np.unique(Lots,return_counts = True)        
-        count = count-1
+        count = (count-1) * volume
         count = count / max(1,sum(count))
         
         # Proportions qu'on veut avoir dans la cours
