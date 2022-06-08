@@ -23,6 +23,7 @@ from utils import *
 # pourquoi le temps de séchage semble diminuer presqu'uniformément par produit alors que les produits ne sont pas faits en même temps
 # séchage ne part pas au bon moment
 # demande en paquet en PMP ?
+# conversion comme il faut en règles
 
 class EnvSimpy(simpy.Environment):
     def __init__(self,paramSimu,**kwargs):
@@ -48,21 +49,21 @@ class EnvSimpy(simpy.Environment):
         
         self.np_produits = paramSimu["df_produits"]
         self.paramSimu = paramSimu
-        self.Evenements = np.asarray([["Temps","Événement","Loader","Source", "Destination","Lot","description"]],dtype='U25')
+        self.Evenements = np.asarray([["Temps","Événement","Loader","Source", "Destination","Lot","description"]],dtype='U50')
         self.EnrEven("Début simulation")
         self.DernierLot = 0
-        self.npLots = np.array([["Temps","Lot","produit","description","Emplacement","temps sechage"]],dtype='U25')
+        self.npLots = np.array([["Temps","Lot","produit","description","Emplacement","temps sechage"]],dtype='U50')
         
         # Ajouter le temps de séchage aux produits à partir de la règle (avec une valeur par défaut au cas ou la règle n'est pas trouvée)
         # Ajout par le fait même d'une demande par produits
         self.np_produits["temps sechage"] = 100
         self.np_produits["demande"] = 0
         self.np_produits["Quantité produite"] = 0
-        for i in self.np_produits["produit"] :
+        for j,i in enumerate(self.np_produits["produit"]) :
             
             variation = 1 + random.random() * 2 * paramSimu["VariationDemandeVSProd"] - paramSimu["VariationDemandeVSProd"]
-            self.np_produits.loc[self.np_produits["produit"] == i,"demande"] =  0.1 #(max(0,self.np_produits[self.np_produits["produit"] == i]["production epinette"].values[0])+max(0,self.np_produits[self.np_produits["produit"] == i]["production sapin"].values[0]))/2 /7/24 * paramSimu["DureeSimulation"] * variation
-            
+            self.np_produits.loc[self.np_produits["produit"] == i,"demande"] =  (j+1)/55 #(max(0,self.np_produits[self.np_produits["produit"] == i]["production epinette"].values[0])+max(0,self.np_produits[self.np_produits["produit"] == i]["production sapin"].values[0]))/2 /7/24 * paramSimu["DureeSimulation"] * variation
+                    
             regle = self.np_produits[self.np_produits["produit"] == i]["regle"].values[0]
             regle = self.df_rulesDetails[self.df_rulesDetails["regle"] == regle]
             if len(regle) == 0 :
@@ -72,8 +73,8 @@ class EnvSimpy(simpy.Environment):
         self.cProd = {}
         for indice,colonne in enumerate(self.np_produits.columns) : 
             self.cProd[colonne] = indice
-        self.np_produits = np.vstack((np.asarray(self.np_produits.columns,dtype='U25'),self.np_produits.to_numpy(dtype='U25')))
-                
+        self.np_produits = np.vstack((np.asarray(self.np_produits.columns,dtype='U50'),self.np_produits.to_numpy(dtype='U50')))
+                        
         self.lesEmplacements = {}
         self.lesEmplacements["Sortie sciage"] = Emplacements(Nom = "Sortie sciage", env=self,capacity=self.paramSimu["CapaciteSortieSciage"])
         
@@ -140,7 +141,12 @@ class EnvSimpy(simpy.Environment):
     def updateApresStep(self) :
         self.updateRespectInventaire()
     
+    def getProportions(self) : 
+        
+        return self.proportionVoulu, self.proportionReelle
+        
     def updateRespectInventaire (self) :
+        
         # Quantité dans la cours de chaque produit en s'assurant d'avoir le produit dans la liste même si la quantité est à 0
         volume = self.np_produits[1:,self.cProd["volume paquet"]].astype(int)
         Lots = np.concatenate((self.np_produits[1:,self.cProd["produit"]],self.npLots[self.npLots[:,self.cLots["Emplacement"]] == "Sortie sciage",self.cLots["produit"]]))
@@ -148,11 +154,11 @@ class EnvSimpy(simpy.Environment):
         count = (count-1) * volume
         
         # Proportions qu'on veut avoir dans la cours
-        proportionVoulu = self.np_produits[1:,self.cProd["demande"]].astype(float) * volume       
-        propotrionReelle = count
+        self.proportionVoulu = self.np_produits[1:,self.cProd["demande"]].astype(float) * volume       
+        self.proportionReelle = count
         
         # La différence est en PMP à l'heure pour rester dans des ranges similaires avec le temps pour une longue simulation
-        self.lstProdVsDemande = (proportionVoulu - propotrionReelle)
+        self.lstProdVsDemande = (self.proportionVoulu - self.proportionReelle)
     
     def getRespectInventaire(self) : 
         return self.lstProdVsDemande
@@ -166,7 +172,7 @@ class EnvSimpy(simpy.Environment):
             else : 
                 description = self.npLots[Lot][self.cLots["description"]]
         
-            nouveau = np.asarray([[self.now,Evenement,NomLoader, Source, Destination, Lot,description]],dtype='U25')
+            nouveau = np.asarray([[self.now,Evenement,NomLoader, Source, Destination, Lot,description]],dtype='U50')
             self.Evenements = np.vstack((self.Evenements,nouveau))
             
         
@@ -178,7 +184,7 @@ class EnvSimpy(simpy.Environment):
     def AjoutSortieSciage(self,produit,description,volumePaquet,epaisseur,tempsSechage) :
         self.DernierLot += 1
         emplacement = "Sortie sciage"
-        nouveaunp = np.asarray([[self.now,self.DernierLot,produit,description,emplacement,tempsSechage]],dtype='U25')
+        nouveaunp = np.asarray([[self.now,self.DernierLot,produit,description,emplacement,tempsSechage]],dtype='U50')
         
         if self.paramSimu["SimulationParContainer"] : 
             pass
@@ -353,6 +359,9 @@ if __name__ == '__main__':
         action = ChoixLoader(env)
         done = env.stepSimpy(action)
         _ = env.getState()
+        
+        voulu, relle = env.getProportions()
+        print(action, env.now,relle)
     
     
     timer_après = time.time()
