@@ -22,7 +22,7 @@ if __name__ == '__main__':
     paramSimu = {"df_produits": df_produits,
                  "df_rulesDetails": df_rulesDetails,
                  "SimulationParContainer": False,
-                 "NbStepSimulation": 500,
+                 "NbStepSimulation": 64*50,
                  "nbLoader": 1,
                  "nbSechoir": 2,
                  "ConserverListeEvenements": True,
@@ -40,17 +40,21 @@ if __name__ == '__main__':
                  "VariationDemandeVSProd" : 0.25
                  } # Pourcentage de variation de la demande par rapport à la production de la scierie}
 
+    hyperparams = {"n_steps": 64,
+                   "batch_size": 64,
+                   "total_timesteps": paramSimu["NbStepSimulation"],
+                   "n_epochs": 10,
+                   "lr": 0.0003}
 
     # Pour faciliter le développement, on s'assure d'avoir toujours le mêmes
     # nombres aléatoires d'une exécution à l'autre
     random.seed(1)
-
     timer_avant = time.time()
-    envRL = EnvGym(paramSimu, get_action_space(paramSimu), get_state_space(paramSimu), state_min = 0, state_max = 1)
-    model = PPO('MlpPolicy', envRL)
-    envRL.evaluate_model()
-    #envRL.train_model(nb_timestep=paramSimu["DureeSimulation"], nb_episode=10, log=True, save=False)
-
+    envRL = EnvGym(paramSimu, get_action_space(paramSimu), get_state_space(paramSimu), state_min = 0, state_max = 1, hyperparams=hyperparams)
+    model = PPO('MlpPolicy', envRL, n_steps=hyperparams["n_steps"], batch_size=hyperparams["batch_size"], n_epochs=hyperparams["n_epochs"], learning_rate=hyperparams["lr"], verbose=0)
+    envRL.evaluate_model(model)
+    # envRL.train_model(model, 20, save=False)
+    
     timer_après = time.time()
 
     # juste pour faciliter débuggage...
