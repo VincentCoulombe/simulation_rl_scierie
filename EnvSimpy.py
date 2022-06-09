@@ -22,8 +22,8 @@ from utils import *
 # Pour l'instant envoi dans le premier séchoir qui a de la place si plusieurs libres
 # pourquoi le temps de séchage semble diminuer presqu'uniformément par produit alors que les produits ne sont pas faits en même temps
 # séchage ne part pas au bon moment
-# demande en paquet en PMP ?
 # conversion comme il faut en règles
+# indicateurs taux d'utilisation (loader, scierie, séchage), quantitée sécher par règles
 
 class EnvSimpy(simpy.Environment):
     def __init__(self,paramSimu,**kwargs):
@@ -239,7 +239,7 @@ class EnvSimpy(simpy.Environment):
                 self.lesLoader[key].FinDeplacementLoader()               
                 
         # Aucune action possible, le loader est tombé en attente, on attend qu'il se passe quelque chose avant de finalisé le step...
-        if (not self.sourceDisponible() or not self.destinationDisponible()) and self.nbStep <= self.paramSimu["NbStepSimulation"] :
+        if (not self.sourceDisponible() or not self.destinationDisponible()) and self.nbStep < self.paramSimu["NbStepSimulation"] :
             _ = self.getState() # Pour mettre à jour LienActionLot
             return self.stepSimpy(-1)
                 
@@ -247,7 +247,7 @@ class EnvSimpy(simpy.Environment):
         
         self.nbStep += 1
         
-        if self.nbStep > self.paramSimu["NbStepSimulation"] :            
+        if self.nbStep >= self.paramSimu["NbStepSimulation"] :            
             self.EnrEven("Fin de la simulation")
             print("Simulation terminée")
             return True
@@ -343,7 +343,7 @@ if __name__ == '__main__':
     paramSimu = {"df_produits": df_produits,
              "df_rulesDetails": df_rulesDetails,
              "SimulationParContainer": False,
-             "NbStepSimulation": 500,
+             "NbStepSimulation": 100,
              "nbLoader": 1,
              "nbSechoir": 4,
              "ConserverListeEvenements": True,
@@ -390,6 +390,7 @@ if __name__ == '__main__':
     df_produits = env.np_produits
 
     print("Temps d'exécution : ", timer_après-timer_avant)
+    print("Durée en h/j/an de la simulation : ", env.now, env.now/ 24, env.now/24/365)
     
     if paramSimu["ConserverListeEvenements"] : 
         print("Nb de déplacements de loader : ", len(Evenement[Evenement[:,1] == "Début déplacement"]))
