@@ -37,8 +37,9 @@ class EnvGym(gym.Env) :
     def get_avg_reward(self) -> float:
         return np.array(self.indicateurs)[:, 1].mean()
                 
-    def reset(self) -> np.array: 
-        
+    def reset(self, test:bool =False) -> np.array: 
+        if test:
+            self.paramSimu["NbStepSimulation"] = self.paramSimu["NbStepSimulationTest"]
         self.env = EnvSimpy(self.paramSimu) # Nouvelle simulation simpy       
         self.done = False
         self.info = {}
@@ -53,7 +54,7 @@ class EnvGym(gym.Env) :
         
         if self.done:
             self.simu_counter += 1
-            print(f"Épisode {self.simu_counter} terminée")
+            print(f"Simulation {self.simu_counter} terminée.")
             self.rewards_moyens.append(self.get_avg_reward())
             print(f"Reward moyen : {self.get_avg_reward():.2f}")
             
@@ -80,7 +81,7 @@ class EnvGym(gym.Env) :
         for i in range(nb_episode):
             self.reset()
             model.learn(total_timesteps=self.hyperparams["total_timesteps"], reset_num_timesteps=False)
-            print(f"Indicateurs du modèle après 'épisode : {i}")
+            print(f"Indicateurs du modèle après l'épisode : {i}")
             self.evaluate_model(model)
             if save:
                 model.save(f"{models_dir}/episode{i}_reward_moyen{self.get_avg_reward():.2f}")
@@ -91,7 +92,7 @@ class EnvGym(gym.Env) :
         plt.show()
                
     def evaluate_model(self, model: PPO):
-        obs = self.reset()
+        obs = self.reset(test=True)
         done = False
         while not done:
             action, _ = model.predict(obs)
