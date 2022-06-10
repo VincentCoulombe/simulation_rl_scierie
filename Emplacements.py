@@ -54,6 +54,6 @@ class Emplacements(simpy.Resource) :
         if self.DebutPlein != -1 : 
             PleinTotal += self.env.now - self.DebutPlein
         
-        return PleinTotal / self.env.now
+        return PleinTotal / self.env.now if self.env.now > 0 else 0
         
         

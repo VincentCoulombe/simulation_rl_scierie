@@ -279,7 +279,7 @@ class EnvSimpy(simpy.Environment):
             if self.lesLoader[key].bAttente :
                 AttenteTotale += self.now - self.lesLoader[key].debutAttente
                 
-        return 1 - (AttenteTotale / self.paramSimu["nbLoader"] / self.now)
+        return 1 - (AttenteTotale / self.paramSimu["nbLoader"] / self.now) if self.now>0 else 0
 
     # Retourne le taux d'utilisation de la scierie.  Le calcul tient compte de toutes les attentes
     # terminées ainsi que l'attente en cours s'il y a lieu.  L'attente est comptée juste
@@ -296,7 +296,7 @@ class EnvSimpy(simpy.Environment):
         NbSechoirs = 0
         for key in self.lesEmplacements.keys() :
             if "Séchoir" in key :
-                TempsComplet += env.lesEmplacements[key].getTauxUtilisationComplet()
+                TempsComplet += self.lesEmplacements[key].getTauxUtilisationComplet()
                 NbSechoirs += 1
                 
         return TempsComplet / NbSechoirs

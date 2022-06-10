@@ -19,7 +19,7 @@ if __name__ == '__main__':
         
     paramSimu = {"df_regles": regles,
              "NbStepSimulation": 64*5,
-             "NbStepSimulationTest": 64*2,
+             "NbStepSimulationTest": 64*10,
              "nbLoader": 1,
              "nbSechoir1": 4,
              "CapaciteSortieSciage": 100, # En nombre de chargements avant de bloquer la scierie
@@ -49,16 +49,9 @@ if __name__ == '__main__':
     timer_avant = time.time()
     envRL = EnvGym(paramSimu, get_action_space(paramSimu), get_state_space(paramSimu), state_min = 0, state_max = 1, hyperparams=hyperparams)
     model = PPO('MlpPolicy', envRL, n_steps=hyperparams["n_steps"], batch_size=hyperparams["batch_size"], n_epochs=hyperparams["n_epochs"], learning_rate=hyperparams["lr"], verbose=0)
-    # envRL.evaluate_model(model)
-    model.learn(total_timesteps=hyperparams["total_timesteps"], reset_num_timesteps=False) # CTRL Z!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! TOUJOURS PAS COMPRIS.............
+    envRL.evaluate_model(model)
+    # model.learn(total_timesteps=hyperparams["total_timesteps"], reset_num_timesteps=False)
     
-    timer_après = time.time()
-
-    # juste pour faciliter débuggage...
-    npLots = envRL.env.npLots
-    Evenement = envRL.env.Evenements
-    df_rulesDetails = envRL.env.df_rulesDetails
-
-    print(f"Temps d'exécution : {timer_après-timer_avant:.2f}")
+    print(f"Temps d'exécution : {time.time()-timer_avant:.2f}")
     
       
