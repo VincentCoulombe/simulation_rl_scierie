@@ -23,6 +23,7 @@ if __name__ == '__main__':
                  "df_rulesDetails": df_rulesDetails,
                  "SimulationParContainer": False,
                  "NbStepSimulation": 64*50,
+                 "NbStepSimulationTest": 64*2,
                  "nbLoader": 1,
                  "nbSechoir": 2,
                  "ConserverListeEvenements": True,
