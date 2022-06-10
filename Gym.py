@@ -98,10 +98,10 @@ class EnvGym(gym.Env) :
             if save:
                 model.save(f"{models_dir}/episode{i}_reward_moyen{self.get_avg_reward():.2f}")
                 
-        print(f"nb_episode : {list(range(nb_episode))}, reward_moyen : {self.rewards_moyens}")
-        # plt.plot(list(range(nb_episode)), self.rewards_moyens, label="reward moyen", color="green")
-        # plt.title(f"Évolution du reward moyen durant les {nb_episode} épisodes d'entrainement.")  
-        # plt.show()
+        
+        plt.plot(list(range(self.simu_counter)), self.rewards_moyens, label="reward moyen", color="green")
+        plt.title(f"Reward moyen des {self.simu_counter} épisodes")  
+        plt.show()
                
     def evaluate_model(self, model: PPO):
         obs = self.reset(test=True)
