@@ -22,7 +22,7 @@ if __name__ == '__main__':
     paramSimu = {"df_produits": df_produits,
                  "df_rulesDetails": df_rulesDetails,
                  "SimulationParContainer": False,
-                 "NbStepSimulation": 64*50,
+                 "NbStepSimulation": 64*0.5,
                  "NbStepSimulationTest": 64*2,
                  "nbLoader": 1,
                  "nbSechoir": 2,
@@ -41,8 +41,8 @@ if __name__ == '__main__':
                  "VariationDemandeVSProd" : 0.25
                  } # Pourcentage de variation de la demande par rapport à la production de la scierie}
 
-    hyperparams = {"n_steps": 64,
-                   "batch_size": 64,
+    hyperparams = {"n_steps": 16,
+                   "batch_size": 16,
                    "total_timesteps": paramSimu["NbStepSimulation"],
                    "n_epochs": 10,
                    "lr": 0.0003}
@@ -53,8 +53,8 @@ if __name__ == '__main__':
     timer_avant = time.time()
     envRL = EnvGym(paramSimu, get_action_space(paramSimu), get_state_space(paramSimu), state_min = 0, state_max = 1, hyperparams=hyperparams)
     model = PPO('MlpPolicy', envRL, n_steps=hyperparams["n_steps"], batch_size=hyperparams["batch_size"], n_epochs=hyperparams["n_epochs"], learning_rate=hyperparams["lr"], verbose=0)
-    envRL.evaluate_model(model)
-    # envRL.train_model(model, 20, save=False)
+    # envRL.evaluate_model(model)
+    model.learn(total_timesteps=hyperparams["total_timesteps"], reset_num_timesteps=False) # CTRL Z!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! TOUJOURS PAS COMPRIS.............
     
     timer_après = time.time()
 

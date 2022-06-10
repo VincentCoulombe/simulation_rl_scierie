@@ -80,7 +80,7 @@ class EnvGym(gym.Env) :
         
         for i in range(nb_episode):
             self.reset()
-            model.learn(total_timesteps=self.hyperparams["total_timesteps"], reset_num_timesteps=False)
+            model.learn(total_timesteps=self.hyperparams["total_timesteps"], reset_num_timesteps=True)
             print(f"Indicateurs du modèle après l'épisode : {i}")
             self.evaluate_model(model)
             if save:
