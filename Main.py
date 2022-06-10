@@ -15,31 +15,27 @@ from utils import *
 
 if __name__ == '__main__': 
         
-    df_produits = pd.read_csv("DATA/df.csv")
-    df_rulesDetails = pd.read_csv("DATA/rulesDetails.csv")
-    df_produits = pd.concat([df_produits.iloc[:5],df_produits.iloc[75:80]],ignore_index = True) # limiter à un sous-ensemble de produits
-
-    paramSimu = {"df_produits": df_produits,
-                 "df_rulesDetails": df_rulesDetails,
-                 "SimulationParContainer": False,
-                 "NbStepSimulation": 64*50,
-                 "NbStepSimulationTest": 64*2,
-                 "nbLoader": 1,
-                 "nbSechoir": 2,
-                 "ConserverListeEvenements": True,
-                 "CapaciteSortieSciage": 10,
-                 "CapaciteSechageAirLibre": 0,
-                 "CapaciteCours": 0,
-                 "CapaciteSechoir": 1,
-                 "TempsAttenteLoader": 1,
-                 "TempsDeplacementLoader": 5,
-                 "TempsSechageAirLibre": 7 * 24,
-                 "RatioSechageAirLibre": 0.1 * 12 / 52,
-                 "HresProdScieriesParSem": 44 + 44,
-                 "VariationProdScierie": 0.1,
-                 "VariationTempsSechage": 0.1,
-                 "VariationDemandeVSProd" : 0.25
-                 } # Pourcentage de variation de la demande par rapport à la production de la scierie}
+    regles = pd.read_csv("DATA/regle.csv")
+        
+    paramSimu = {"df_regles": regles,
+             "NbStepSimulation": 64*5,
+             "NbStepSimulationTest": 64*2,
+             "nbLoader": 1,
+             "nbSechoir1": 4,
+             "CapaciteSortieSciage": 100,
+             "CapaciteSechageAirLibre": 0,
+             "CapaciteCours": 0,
+             "CapaciteSechoir": 1,
+             "TempsAttenteLoader": 1,
+             "TempsDeplacementLoader": 10,
+             "TempsSechageAirLibre": 7 * 24,
+             "RatioSechageAirLibre": 0.1 * 12 / 52,
+             "HresProdScieriesParSem": 44 + 44,
+             "VariationProdScierie": 0.1,  # Pourcentage de variation de la demande par rapport à la production de la scierie
+             "VariationTempsSechage": 0.1,
+             "VariationTempsDeplLoader": 0.1,
+             "VariationDemandeVSProd" : 0.25
+             }
 
     hyperparams = {"n_steps": 64,
                    "batch_size": 64,

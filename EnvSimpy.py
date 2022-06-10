@@ -23,9 +23,7 @@ from utils import *
 ################### MANQUE SIMPY POUR WAGON VS SECHAGE #########################
 ################### gérer temps attente loader comme du monde #########################
 # séchage ne part pas au bon moment
-# conversion comme il faut en règles
 # indicateurs taux d'utilisation (loader, scierie, séchage), quantitée sécher par règles
-# attendre au lieu de aléatoire sur action invalide
 # Générer une cours initiale pour ne pas commencer à vide
 
 class EnvSimpy(simpy.Environment):
@@ -302,6 +300,7 @@ if __name__ == '__main__':
         
     paramSimu = {"df_regles": regles,
              "NbStepSimulation": 64*5,
+             "NbStepSimulationTest": 64*2,
              "nbLoader": 1,
              "nbSechoir1": 4,
              "CapaciteSortieSciage": 100,
@@ -334,7 +333,6 @@ if __name__ == '__main__':
     propReelle = reelle
     while not done:         
         done = env.stepSimpy(ActionValideAleatoire(env))
-#        _ = env.getState()
         _, reelle = env.getProportions()
         propReelle += reelle
     
