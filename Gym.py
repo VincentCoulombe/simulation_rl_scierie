@@ -99,8 +99,8 @@ class EnvGym(gym.Env) :
                 model.save(f"{models_dir}/episode{i}_reward_moyen{self.get_avg_reward():.2f}")
                 
         
-        plt.plot(list(range(nb_episode)), self.rewards_moyens, label="reward moyen", color="green")
-        plt.title(f"Reward moyen des {nb_episode} épisodes")  
+        plt.plot(list(range(1, self.simu_counter)), self.rewards_moyens, label="reward moyen", color="green")
+        plt.title(f"Reward moyen des {self.simu_counter} simulations d'entraînement.")  
         plt.show()
                
     def evaluate_model(self, model: PPO):

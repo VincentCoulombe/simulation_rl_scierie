@@ -41,11 +41,8 @@ class Emplacements(simpy.Resource) :
             self.env.EnrEven("Capacité maximale atteinte", Destination=self.Nom)
             self.DebutPlein = self.env.now
         
-    def EstPlein(self) : 
-        if self.count >= self.capacity : 
-            return True
-        else :
-            return False
+    def EstPlein(self): 
+        return self.count >= self.capacity
         
     # Retourne la proportion du temps que l'emplacement était plein
     def getTauxUtilisationComplet(self) : 
