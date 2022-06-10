@@ -99,9 +99,9 @@ class EnvGym(gym.Env) :
                 model.save(f"{models_dir}/episode{i}_reward_moyen{self.get_avg_reward():.2f}")
                 
         print(f"nb_episode : {list(range(nb_episode))}, reward_moyen : {self.rewards_moyens}")
-        plt.plot(list(range(nb_episode)), self.rewards_moyens, label="reward moyen", color="green")
-        plt.title(f"Évolution du reward moyen durant les {nb_episode} épisodes d'entrainement.")  
-        plt.show()
+        # plt.plot(list(range(nb_episode)), self.rewards_moyens, label="reward moyen", color="green")
+        # plt.title(f"Évolution du reward moyen durant les {nb_episode} épisodes d'entrainement.")  
+        # plt.show()
                
     def evaluate_model(self, model: PPO):
         obs = self.reset(test=True)
@@ -135,7 +135,6 @@ class EnvGym(gym.Env) :
             
         # Afficher les indicateurs de taux d'utilisation
         df_taux_utilisation = pd.DataFrame(self.taux_utilisations, columns=["time", "taux_utilisation_loader", "taux_utilisation_scierie", "taux_utilisation_séchoir"])
-        print(df_taux_utilisation.info())
         plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_utilisation_loader"], label="taux utilisation loader", color="blue")
         plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_utilisation_scierie"], label="taux utilisation scierie", color="green")
         plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_utilisation_séchoir"], label="taux utilisation séchoir", color="red")
