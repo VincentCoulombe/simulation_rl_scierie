@@ -16,12 +16,12 @@ def min_max_scaling(X,minPossible,maxPossible) :
     
 def get_action_space(paramSimu) : 
    
-    return len(paramSimu["df_produits"])
+    return len(paramSimu["df_regles"])
 
 def get_state_space(paramSimu) :
     
     #NbEspaceStateParProduits = 3 * len(paramSimu["df_produits"])
-    NbDemandeVsProduit = len(paramSimu["df_produits"])
+    NbDemandeVsProduit = len(paramSimu["df_regles"])
     NbParamPropEpinettesSortieSciage = 1
     return NbDemandeVsProduit + NbParamPropEpinettesSortieSciage
     

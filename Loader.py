@@ -13,20 +13,17 @@ import EnvSimpy
 
 
 def ActionValideAleatoire(env) :
+    
     if not env.sourceDisponible() or not env.destinationDisponible() :
         return -1, -1
-    lot = -1
-    while lot == -1 :
-        action = random.randint(0,(len(env.paramSimu["df_produits"])-1))        
-        lot = env.LienActionLot[action]
+    
+    charg = -1
+    while charg == -1 :
+        action = random.randint(0,(len(env.paramSimu["df_regles"])-1))        
+        charg = env.LienActionCharg[action]
             
-    return action, lot
-
-# retourne lot, source, destination selon un state passé en paramètre
-def ChoixLoader(env) : 
-           
-    action,lot = ActionValideAleatoire(env)
     return action
+
         
 class Loader() : 
     def __init__(self,NomLoader,env):
@@ -34,40 +31,51 @@ class Loader() :
         self.bAttente = False
         self.env = env
         self.ProchainTemps = 0
-        self.lot = None
+        self.charg = None
         
     def DeplacerLoader(self, action) : 
        
         self.env.RewardActionInvalide = False
        
         source = "Sortie sciage"
-        if action == -1 :
-            lot = -1
+       
+        # Calcul de la durée prévue du déplacement du loader
+        dureemin = self.env.paramSimu["TempsDeplacementLoader"] * (1-self.env.paramSimu["VariationTempsDeplLoader"])
+        dureemax = self.env.paramSimu["TempsDeplacementLoader"] * (1+self.env.paramSimu["VariationTempsDeplLoader"]) 
+        duree = random.triangular(dureemin,dureemax,self.env.paramSimu["TempsDeplacementLoader"])
+        
+        # Si on demande explicitement d'attendre (action = -1) alors c'est ce qu'on fait.  
+        # On attend aussi si aucune action n'est possible.
+        if action == -1 or not self.env.sourceDisponible() or not self.env.destinationDisponible() :
+            charg = -1
             source = "Attente"
-        else :
-            lot = self.env.LienActionLot[action]
+            duree = self.env.paramSimu["TempsAttenteLoader"]
             
-            if lot == -1 :
-                action,lot = ActionValideAleatoire(self.env)
-                if lot == -1 : 
-                    source = "Attente"
-                else : 
-                    #print("Action invalide demandée.  Remplacement par une action aléatoire.")
-                    self.env.RewardActionInvalide = True
+        # On a demandé une action en particulier.  Si l'action est invalide, le loader attend
+        # simplement un temps X en attendant une nouvelle action
+        else :
+            charg = self.env.LienActionCharg[action]
+            if charg == -1 :
+                source = "Attente"
+                self.env.EnrEven("Action invalide demandée.",NomLoader = self.NomLoader,)
+                self.env.RewardActionInvalide = True
                         
+        # Trouver un séchoir de libre, si plusieurs séchoir, prendre le premier tout simplement
         destination = "Attente"
         for key in self.env.lesEmplacements.keys() : 
             if "Préparation séchoir" in key :
                 if not self.env.lesEmplacements[key].EstPlein() :
                     destination = self.env.lesEmplacements[key].Nom
-            
-                    
+                                
+        # On doit attendre, effectuer cette attente.  Mettre un message dans les événements seulement la
+        # première fois s'il y a des attentes successives
         if destination == "Attente" or source == "Attente": 
             if not self.bAttente :
                 self.bAttente = True 
                 self.env.EnrEven("Mise en attente d'un loader",NomLoader = self.NomLoader)
-            self.ProchainTemps += self.env.paramSimu["TempsAttenteLoader"]
-            
+            self.ProchainTemps += duree
+           
+        # Effectuer réellement l'action demandée car elle est valide
         else : 
             
             if self.env.lesEmplacements[destination].EstPlein() : 
@@ -76,32 +84,32 @@ class Loader() :
             self.env.lesEmplacements[destination].request()
                 
             self.bAttente = False
-            self.env.EnrEven("Début déplacement",NomLoader = self.NomLoader,Lot = lot, Source = source, Destination = destination)
-            self.env.npLots[lot][self.env.cLots["Emplacement"]] = self.NomLoader
-            self.env.lesEmplacements[source].release(self.env)
             
-            duree = random.expovariate(1/self.env.paramSimu["TempsDeplacementLoader"])
+            self.env.EnrEven("Début déplacement",NomLoader = self.NomLoader,Charg = charg, Source = source, Destination = destination)
+            self.env.npCharg[charg][self.env.cCharg["Emplacement"]] = self.NomLoader
+            self.env.lesEmplacements[source].release(self.env)
             
             self.source = source
             self.destination = destination
-            self.lot = lot
+            self.charg = charg
             
             self.ProchainTemps += duree
             
-    def FinDeplacementLoader(self) : #,duree,lot,source,destination) : 
+    def FinDeplacementLoader(self) : 
         
+        # Si le loader est bien entrain de faire un déplacement, terminé ce dernier et lancer
+        # les process nécessaires pour la suite de la vie du chargement
+        if self.charg != None : 
         
-        if self.lot != None : 
-        
-            self.env.EnrEven("Fin déplacement",NomLoader = self.NomLoader,Lot = self.lot,Source = self.source, Destination = self.destination)
-            self.env.npLots[self.lot][self.env.cLots["Emplacement"]] = self.destination
-            self.env.LogCapacite(self.env.lesEmplacements[self.destination]) 
+            self.env.EnrEven("Fin déplacement",NomLoader = self.NomLoader,Charg = self.charg,Source = self.source, Destination = self.destination)
+            self.env.npCharg[self.charg][self.env.cCharg["Emplacement"]] = self.destination
+            self.env.lesEmplacements[self.destination].LogCapacite()
             
             # Procédé au séchage
             if "Préparation séchoir" in self.destination : 
-                self.env.process(EnvSimpy.Sechage(self.env,self.lot,self.destination))
+                self.env.process(EnvSimpy.Sechage(self.env,self.charg,self.destination))
             
-            self.lot = None
+            self.charg = None
 
 
 if __name__ == '__main__': 

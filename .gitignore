@@ -20,3 +20,8 @@ __pycache__/Main.cpython-38.pyc
 __pycache__/EnvSimpy.cpython-37.pyc
 Archive/EnvSimpy.py
 Archive/Loader.py
+Archive/Loader_oldAvantSwitchChargement.py
+Archive/EnvSimpy_oldAvantSwitchChargement.py
+__pycache__/Loader_new.cpython-38.pyc
+__pycache__/EnvSimpy_new.cpython-38.pyc
+__pycache__/Emplacements.cpython-38.pyc
