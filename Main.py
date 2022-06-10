@@ -22,19 +22,19 @@ if __name__ == '__main__':
              "NbStepSimulationTest": 64*2,
              "nbLoader": 1,
              "nbSechoir1": 4,
-             "CapaciteSortieSciage": 100,
+             "CapaciteSortieSciage": 100, # En nombre de chargements avant de bloquer la scierie
              "CapaciteSechageAirLibre": 0,
              "CapaciteCours": 0,
-             "CapaciteSechoir": 1,
              "TempsAttenteLoader": 1,
-             "TempsDeplacementLoader": 10,
+             "TempsAttenteActionInvalide": 10,
              "TempsSechageAirLibre": 7 * 24,
              "RatioSechageAirLibre": 0.1 * 12 / 52,
-             "HresProdScieriesParSem": 44 + 44,
+             "HresProdScieriesParSem": 168, #44 + 44,
              "VariationProdScierie": 0.1,  # Pourcentage de variation de la demande par rapport à la production de la scierie
              "VariationTempsSechage": 0.1,
              "VariationTempsDeplLoader": 0.1,
-             "VariationDemandeVSProd" : 0.25
+             "FacteurSortieScierie" : 1, # Permet de sortir plus ou moins de la scierie (1 correspond à sortir exactement ce qui est prévu)
+             "ObjectifStableEnPMP" : 215000 * 4 * 2.5
              }
 
     hyperparams = {"n_steps": 64,

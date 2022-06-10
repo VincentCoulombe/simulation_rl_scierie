@@ -13,15 +13,21 @@ class Emplacements(simpy.Resource) :
         self.lstRequest = []
         self.Nom = Nom
         self.env = env
+        self.PleinTotale = 0
+        self.DebutPlein = -1
        
     def request(self,**kwargs) :
+        
         request = super().request(**kwargs)
         self.lstRequest.append(request)
         return request
         
     def release(self,env) : 
         if self.count >= self.capacity : 
+
             env.EnrEven("Place à nouveau disponible", Destination=self.Nom)
+            self.PleinTotale += self.env.now - self.DebutPlein
+            self.DebutPlein = -1
         
         request = self.lstRequest.pop(0)
         super().release(request)
@@ -31,11 +37,23 @@ class Emplacements(simpy.Resource) :
     # C'est donc plus clair ainsi quand on debug en regardant la liste d'événements... 
     def LogCapacite(self) :
         
-        if self.count == self.capacity and len(self.queue)==0: 
+        if self.count == self.capacity : 
             self.env.EnrEven("Capacité maximale atteinte", Destination=self.Nom)
+            self.DebutPlein = self.env.now
         
     def EstPlein(self) : 
         if self.count >= self.capacity : 
             return True
         else :
             return False
+        
+    # Retourne la proportion du temps que l'emplacement était plein
+    def getTauxUtilisationComplet(self) : 
+        
+        PleinTotal = self.PleinTotale
+        if self.DebutPlein != -1 : 
+            PleinTotal += self.env.now - self.DebutPlein
+        
+        return PleinTotal / self.env.now
+        
+        

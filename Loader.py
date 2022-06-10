@@ -31,6 +31,7 @@ class Loader() :
         self.bAttente = False
         self.env = env
         self.ProchainTemps = 0
+        self.AttenteTotale = 0
         self.charg = None
         
     def DeplacerLoader(self, action) : 
@@ -38,12 +39,7 @@ class Loader() :
         self.env.RewardActionInvalide = False
        
         source = "Sortie sciage"
-       
-        # Calcul de la durée prévue du déplacement du loader
-        dureemin = self.env.paramSimu["TempsDeplacementLoader"] * (1-self.env.paramSimu["VariationTempsDeplLoader"])
-        dureemax = self.env.paramSimu["TempsDeplacementLoader"] * (1+self.env.paramSimu["VariationTempsDeplLoader"]) 
-        duree = random.triangular(dureemin,dureemax,self.env.paramSimu["TempsDeplacementLoader"])
-        
+              
         # Si on demande explicitement d'attendre (action = -1) alors c'est ce qu'on fait.  
         # On attend aussi si aucune action n'est possible.
         if action == -1 or not self.env.sourceDisponible() or not self.env.destinationDisponible() :
@@ -59,6 +55,7 @@ class Loader() :
                 source = "Attente"
                 self.env.EnrEven("Action invalide demandée.",NomLoader = self.NomLoader,)
                 self.env.RewardActionInvalide = True
+                duree = self.env.paramSimu["TempsAttenteActionInvalide"]
                         
         # Trouver un séchoir de libre, si plusieurs séchoir, prendre le premier tout simplement
         destination = "Attente"
@@ -72,18 +69,29 @@ class Loader() :
         if destination == "Attente" or source == "Attente": 
             if not self.bAttente :
                 self.bAttente = True 
+                self.debutAttente = self.env.now
                 self.env.EnrEven("Mise en attente d'un loader",NomLoader = self.NomLoader)
             self.ProchainTemps += duree
            
         # Effectuer réellement l'action demandée car elle est valide
         else : 
             
+            # Calcul de la durée prévue du déplacement du loader
+            regle = self.env.npCharg[charg][self.env.cCharg["regle"]]
+            TempsChargement = float(self.env.np_regles[self.env.np_regles[:,self.env.cRegle["regle"]] == regle,self.env.cRegle["temps chargement"]])
+            dureemin = TempsChargement * (1-self.env.paramSimu["VariationTempsDeplLoader"])
+            dureemax = TempsChargement * (1+self.env.paramSimu["VariationTempsDeplLoader"]) 
+            duree = random.triangular(dureemin,dureemax,TempsChargement)
+            
             if self.env.lesEmplacements[destination].EstPlein() : 
                 raise "L'action choisie mène à une destination qui est pleine ce qui entraîne une attente infinie."
                 
             self.env.lesEmplacements[destination].request()
                 
-            self.bAttente = False
+            # s'il était précédemment en attente, terminé l'attente et conserver la durée pour nos indicateurs
+            if self.bAttente : 
+                self.bAttente = False
+                self.AttenteTotale += self.env.now - self.debutAttente
             
             self.env.EnrEven("Début déplacement",NomLoader = self.NomLoader,Charg = charg, Source = source, Destination = destination)
             self.env.npCharg[charg][self.env.cCharg["Emplacement"]] = self.NomLoader

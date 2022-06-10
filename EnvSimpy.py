@@ -13,18 +13,33 @@ from Loader import *
 from Emplacements import *
 from utils import *
 
+############### Done
+# prendre en compte dernier fichier Francis pour temsp chargement
+# get taux utilisation loader
+# get taux utilisation scierie avec commentaire que sort même si bloqué...
+# get taux utilisation séchoir
+# get quantités totales sciées et séchées
+# attente au lieu d'action aléatoire sur action invalide
+# getIndicateursInventaire
+# nouveau state
+# paramètre pour nuancer la sortie de la scierie 
+# gestion tannante numpy (1ère ligne et string)
+# récupération du main (les paramSimu)
+# donner numéro de téléphone
 
+############### Idées, mais à voir si on va le faire
 # Inclure du séchage à l'air libre (voir procédure SechageAirLibre déjà commencée)
-# Pour l'instant envoi dans le premier séchoir qui a de la place si plusieurs libres
-# prendre en compte les différentes plannification de production (mixte, épinette, sapin)
-# temps de déplacement des loader
+# Pour l'instant envoi dans le premier séchoir qui a de la place si plusieurs libres... pourrait remplir le rail devant mauvais séchoir...
+# prendre en compte les différentes planification de production (mixte, épinette, sapin)
+# passage par la cours
+# gérer temps attente loader pour prochain événement au lieu d'attendre 1 heure s'il n'a rien à faire...
+# aléatoire selon les quantités de chaque produits dans la cours au lieu de juste choisir une règle (éviterait de toujours vider les règles)
 
-################### MANQUE CONTRAINTES WAGON EN GÉNÉRAL #########################
-################### MANQUE SIMPY POUR WAGON VS SECHAGE #########################
-################### gérer temps attente loader comme du monde #########################
-# séchage ne part pas au bon moment
-# indicateurs taux d'utilisation (loader, scierie, séchage), quantitée sécher par règles
-# Générer une cours initiale pour ne pas commencer à vide
+############### à faire
+# Générer une cours initiale pour ne pas commencer à vide (attention pour ne pas brisé les indicateurs qui compte les qtés qui sortent direct sur npCharg)
+# horaire de travail des loaders
+
+
 
 class EnvSimpy(simpy.Environment):
     
@@ -58,9 +73,9 @@ class EnvSimpy(simpy.Environment):
         # Transférer le pandas dans un numpy en conservant le nom des colonnes comme première ligne
         # pour faciliter le débuggage.  Un dictionnaire permettant de se rendre indépendant des numéros 
         # de colonnes malgré qu'on soit dans numpy est créer en même temps.
-        self.cProd = {}
+        self.cRegle = {}
         for indice,colonne in enumerate(self.np_regles.columns) : 
-            self.cProd[colonne] = indice
+            self.cRegle[colonne] = indice
         self.np_regles = np.vstack((np.asarray(self.np_regles.columns,dtype='U50'),self.np_regles.to_numpy(dtype='U50')))
         
         ####### Création des différents emplacements ou le bois peut se trouver.  
@@ -74,7 +89,8 @@ class EnvSimpy(simpy.Environment):
             self.lesEmplacements["Séchage à l'air libre"] = Emplacements(Nom = "Séchage à l'air libre", env=self,capacity=self.paramSimu["CapaciteSechageAirLibre"])
         
         for i in range(self.paramSimu["nbSechoir1"]) : 
-            self.lesEmplacements["Préparation séchoir " + str(i+1)] = Emplacements(Nom = "Préparation séchoir " + str(i+1), env=self,capacity=self.paramSimu["CapaciteSechoir"])
+            self.lesEmplacements["Préparation séchoir " + str(i+1)] = Emplacements(Nom = "Préparation séchoir " + str(i+1), env=self,capacity=2)
+            self.lesEmplacements["Séchoir " + str(i+1)] = Emplacements(Nom = "Séchoir " + str(i+1), env=self,capacity=1)
         #######
         
         # Création des différents loaders nécessaires pour la simulation
@@ -104,46 +120,7 @@ class EnvSimpy(simpy.Environment):
     
         nouveau = np.asarray([[self.now,Evenement,NomLoader, Source, Destination, Charg,description]],dtype='U50')
         self.Evenements = np.vstack((self.Evenements,nouveau))
-            
-    # Conserve un attribut LienActionCharg qui permet de faire le lien entre le numéro de l'action
-    # retourné par l'agent et le chargement correspondant qu'on doit déplacer (dans npCharg)
-    def updateLienActionChargement(self) : 
-
-        self.LienActionCharg = []
-        for produit in self.np_regles[1:,self.cProd["regle"]] :            
-
-            charg = self.npCharg[(self.npCharg[:,self.cCharg["regle"]] == produit) & (self.npCharg[:,self.cCharg["Emplacement"]] == "Sortie sciage"),self.cCharg["Charg"]].astype(int)
-            if len(charg) == 0 :
-                charg = -1
-            else:
-                charg = np.min(charg)
-            
-            self.LienActionCharg.append(charg)  
-
-    # Update des attributs qui conservent les différentes informations pour les métriques concernant
-    # les quantitées en inventaire    
-    def updateRespectInventaire (self) :
-        
-        # Quantité dans la cours de chaque produit en s'assurant d'avoir le produit dans la liste même si la quantité est à 0
-        Charg = np.concatenate((self.np_regles[1:,self.cProd["regle"]],self.npCharg[self.npCharg[:,self.cCharg["Emplacement"]] == "Sortie sciage",self.cCharg["regle"]]))
-        unique,count = np.unique(Charg.astype(int),return_counts = True)        
-        count = (count-1)
-        count = count / max(1,sum(count))
-        
-        # Proportions qu'on veut avoir dans la cours
-        self.proportionVoulu = self.np_regles[1:,self.cProd["proportion 50/50"]].astype(float)
-        self.proportionReelle = count
-        
-        # La différence est en PMP à l'heure pour rester dans des ranges similaires avec le temps pour une longue simulation
-        self.lstProdVsDemande = (self.proportionVoulu - self.proportionReelle)
-
-    # Lancée au début complètement et après chaque step pour calculer et mettre à jour les attributs 
-    # une seule fois s'ils sont utiles à plusieurs endroits
-    def updateApresStep(self) :
-
-        self.updateLienActionChargement()
-        self.updateRespectInventaire()
-
+ 
     # Retourne le Loader qui devrait être entrain de faire l'action courante ou la prochaine action
     # ainsi que l'heure à laquelle il prévoit faire cette dite action
     def RetLoaderCourant(self) : 
@@ -205,13 +182,83 @@ class EnvSimpy(simpy.Environment):
         
         return False
 
+           
+    # Conserve un attribut LienActionCharg qui permet de faire le lien entre le numéro de l'action
+    # retourné par l'agent et le chargement correspondant qu'on doit déplacer (dans npCharg)
+    def updateLienActionChargement(self) : 
+
+        self.LienActionCharg = []
+        for produit in self.np_regles[1:,self.cRegle["regle"]] :            
+
+            charg = self.npCharg[(self.npCharg[:,self.cCharg["regle"]] == produit) & (self.npCharg[:,self.cCharg["Emplacement"]] == "Sortie sciage"),self.cCharg["Charg"]].astype(int)
+            if len(charg) == 0 :
+                charg = -1
+            else:
+                charg = np.min(charg)
+            
+            self.LienActionCharg.append(charg)  
+
+    # Update des attributs qui conservent les différentes informations pour les métriques concernant
+    # les quantitées en inventaire    
+    def updateInventaire (self) :
+        
+        # Quantité sciée par règles en s'assurant d'avoir le produit dans la liste même si la quantité est à 0
+        Charg = np.concatenate((self.np_regles[1:,self.cRegle["regle"]],self.npCharg[1:,self.cCharg["regle"]]))
+        unique,count = np.unique(Charg.astype(int),return_counts = True)        
+        count = (count-1)
+        self.QteTotaleSciee = count
+        
+        # Quantité séchée par règles en s'assurant d'avoir le produit dans la liste même si la quantité est à 0
+        Charg = np.concatenate((self.np_regles[1:,self.cRegle["regle"]],self.npCharg[self.npCharg[:,self.cCharg["Emplacement"]] == "Sortie séchoir",self.cCharg["regle"]]))
+        unique,count = np.unique(Charg.astype(int),return_counts = True)        
+        count = (count-1)
+        self.QteTotaleSecher = count
+        
+        # Quantité dans la cours de chaque produit en s'assurant d'avoir le produit dans la liste même si la quantité est à 0
+        QteRegle = self.np_regles[1:,self.cRegle["sechoir1"]].astype(int)
+        Charg = np.concatenate((self.np_regles[1:,self.cRegle["regle"]],self.npCharg[self.npCharg[:,self.cCharg["Emplacement"]] == "Sortie sciage",self.cCharg["regle"]]))
+        unique,count = np.unique(Charg.astype(int),return_counts = True)        
+        count = (count-1)
+        self.QteDansCours = count
+        self.proportionReelle = count / max(1,sum(count))
+                
+        # Proportions qu'on veut avoir dans la cours
+        self.proportionVoulu = self.np_regles[1:,self.cRegle["proportion 50/50"]].astype(float)
+        
+        # Ce que ça représente comme objectif stable et dynamiques
+        self.ObjectifStable = self.proportionVoulu * self.paramSimu["ObjectifStableEnPMP"] / QteRegle
+        ObjectifDynamique = self.proportionVoulu * sum(self.QteDansCours * QteRegle) / QteRegle
+        self.ObjectifDynamiqueInf = ObjectifDynamique.astype(float) -1
+        self.ObjectifDynamiqueSup = ObjectifDynamique.astype(float) +1 
+        
+        # La différence est en PMP à l'heure pour rester dans des ranges similaires avec le temps pour une longue simulation
+        self.lstProdVsDemande = (self.proportionVoulu - self.proportionReelle)
+
+    # Lancée au début complètement et après chaque step pour calculer et mettre à jour les attributs 
+    # une seule fois s'ils sont utiles à plusieurs endroits
+    def updateApresStep(self) :
+
+        self.updateLienActionChargement()
+        self.updateInventaire()
+
+    def getIndicateursInventaire(self) : 
+        
+        return self.QteDansCours, self.ObjectifStable, self.ObjectifDynamiqueInf, self.ObjectifDynamiqueSup
+
     # Retourne le State à l'agent.  Celui-ci devrait être déjà prêt par les mises à jours lancées dans updateApresStep
     def getState(self) : 
         
+        # Pour ancien state sur les proportion...
         # Est-ce que les stocks sont stables dans la cours
-        lstProdVsDemandeMinMax = min_max_scaling(self.lstProdVsDemande.astype(float),-25000,25000)
+        #lstProdVsDemandeMinMax = min_max_scaling(self.lstProdVsDemande.astype(float),-25000,25000)
         
-        return np.concatenate(([self.PropEpinettesSortieSciage],lstProdVsDemandeMinMax))
+        QteDansCours = min_max_scaling(self.QteDansCours,0,self.paramSimu["CapaciteSortieSciage"])
+        
+        return np.concatenate(([self.PropEpinettesSortieSciage],QteDansCours))
+    
+    # Retourne la quantité totale séchée et sciée pour chaque produits depuis le début de la simulation
+    def getQteTotale(self) :     
+        return self.QteTotaleSecher,self.QteTotaleSciee
     
     # Retourne les proportions voulu et réelle du stock dans la cours
     def getProportions(self) : 
@@ -221,24 +268,57 @@ class EnvSimpy(simpy.Environment):
     # Retourne la différence entre la proportion voulue dans la cours et la proportion réelle qu'on a    
     def getRespectInventaire(self) : 
         return self.lstProdVsDemande
+    
+    # Retourne le taux d'utilisation des loader.  Le calcul tient compte de toutes les attentes
+    # terminées ainsi que l'attente en cours s'il y a lieu
+    def getTauxUtilisationLoader(self) : 
+        
+        AttenteTotale = 0
+        for key in self.lesLoader.keys() : 
+            AttenteTotale += self.lesLoader[key].AttenteTotale            
+            if self.lesLoader[key].bAttente :
+                AttenteTotale += self.now - self.lesLoader[key].debutAttente
+                
+        return 1 - (AttenteTotale / self.paramSimu["nbLoader"] / self.now)
+
+    # Retourne le taux d'utilisation de la scierie.  Le calcul tient compte de toutes les attentes
+    # terminées ainsi que l'attente en cours s'il y a lieu.  L'attente est comptée juste
+    # une fois car on a une seule scierie et ce même si plusieurs chargement tombent en attente
+    def getTauxUtilisationScierie(self) : 
+        
+        return 1 - self.lesEmplacements["Sortie sciage"].getTauxUtilisationComplet()
+
+    # Retourne le taux d'utilisation des séchoirs.  Le calcul tient compte de toutes les attentes
+    # terminées ainsi que l'attente en cours s'il y a lieu.  
+    def getTauxUtilisationSechoirs(self) : 
+        
+        TempsComplet = 0
+        NbSechoirs = 0
+        for key in self.lesEmplacements.keys() :
+            if "Séchoir" in key :
+                TempsComplet += env.lesEmplacements[key].getTauxUtilisationComplet()
+                NbSechoirs += 1
+                
+        return TempsComplet / NbSechoirs
+
 
 
 # Lance les différents sciages selon le rythme prédéterminé dans les règles
 def Sciage(env,npUneRegle) :
     
     # Récupération des informations de bases
-    produit = int(npUneRegle[env.cProd["regle"]])
-    description = npUneRegle[env.cProd["description"]]
-    volumeSechoir1 = float(npUneRegle[env.cProd["sechoir1"]])
-    tempsSechage = float(npUneRegle[env.cProd["temps sechage"]])
+    produit = int(npUneRegle[env.cRegle["regle"]])
+    description = npUneRegle[env.cRegle["description"]]
+    volumeSechoir1 = float(npUneRegle[env.cRegle["sechoir1"]])
+    tempsSechage = float(npUneRegle[env.cRegle["temps sechage"]])
     
     # Ramener le temps nécessaire pour le produit en heure pour utilisation par le yield plus tard
-    prodMoyPMPSem = max(0,float(npUneRegle[env.cProd["production mixte"]]))
+    prodMoyPMPSem = max(0,float(npUneRegle[env.cRegle["production mixte"]])) * env.paramSimu["FacteurSortieScierie"]
     prodMoyPMPHr = prodMoyPMPSem / env.paramSimu["HresProdScieriesParSem"]
     dureeMoyCharg = volumeSechoir1 / prodMoyPMPHr
     dureeMinCharg = dureeMoyCharg * (1-env.paramSimu["VariationProdScierie"])
     dureeMaxCharg = dureeMoyCharg * (1+env.paramSimu["VariationProdScierie"])   
-                    
+    
     while True :
 
         # Temps inter-sortie du sciage
@@ -261,21 +341,33 @@ def Sciage(env,npUneRegle) :
 
 # Effectue le séchage selon les temps de séchage des chargements.  Le temps de séchage ici
 # est affecté si on active le séchage à l'air libre.
-def Sechage(env,charg,destination) : 
+def Sechage(env,charg,NomPrepSechage) : 
     
+    NomSechoir = "Séchoir" + NomPrepSechage[len("Préparation séchoir"):]   
     produit = int(env.npCharg[charg][env.cCharg["regle"]])
     tempsSechage = float(env.npCharg[charg][env.cCharg["temps sechage"]])
     tempsMin = tempsSechage * (1-env.paramSimu["VariationTempsSechage"])
     tempsMax = tempsSechage * (1+env.paramSimu["VariationTempsSechage"])
     
-    env.EnrEven("Début séchage",Charg = charg, Destination = destination)
-    
+    # Transférer le wagon dans le séchoir et commencer le séchage
+    yield env.lesEmplacements[NomSechoir].request()   
+    env.EnrEven("Début séchage",Charg = charg, Destination = NomSechoir)
+    env.lesEmplacements[NomSechoir].LogCapacite()
     yield env.timeout(random.triangular(tempsMin,tempsMax,tempsSechage))
     
-    env.EnrEven("Fin séchage",Charg = charg, Destination = destination)
+    # Le séchage est terminé, libérer le séchoir pour pouvoir faire entrer un autre wagon
+    env.EnrEven("Fin séchage",Charg = charg, Destination = NomSechoir)
+    env.lesEmplacements[NomSechoir].release(env)   
     env.npCharg[charg][env.cCharg["Emplacement"]] = "Sortie séchoir"
     
-    env.lesEmplacements[destination].release(env)
+    # Décharger le wagon qui vient de sortir du séchoir et le libérer pour qu'il 
+    # puisse être à nouveau rempli (on prend pour acquis qu'on a un loader de disponible)
+    regle = env.npCharg[charg][env.cCharg["regle"]]
+    TempsDeChargement = float(env.np_regles[env.np_regles[:,env.cRegle["regle"]] == regle,env.cRegle["temps chargement"]])
+    dureemin = TempsDeChargement * (1-env.paramSimu["VariationTempsDeplLoader"])
+    dureemax = TempsDeChargement * (1+env.paramSimu["VariationTempsDeplLoader"]) 
+    yield env.timeout(random.triangular(dureemin,dureemax,TempsDeChargement))
+    env.lesEmplacements[NomPrepSechage].release(env)
        
 
 # Code débuté, mais non complété pour que le bois sèche dans la cours.
@@ -295,6 +387,7 @@ def SechageAirLibre(env,charg):
 if __name__ == '__main__': 
        
     import time
+    import matplotlib.pyplot as plt
     
     regles = pd.read_csv("DATA/regle.csv")
         
@@ -303,19 +396,19 @@ if __name__ == '__main__':
              "NbStepSimulationTest": 64*2,
              "nbLoader": 1,
              "nbSechoir1": 4,
-             "CapaciteSortieSciage": 100,
+             "CapaciteSortieSciage": 100, # En nombre de chargements avant de bloquer la scierie
              "CapaciteSechageAirLibre": 0,
              "CapaciteCours": 0,
-             "CapaciteSechoir": 1,
              "TempsAttenteLoader": 1,
-             "TempsDeplacementLoader": 10,
+             "TempsAttenteActionInvalide": 10,
              "TempsSechageAirLibre": 7 * 24,
              "RatioSechageAirLibre": 0.1 * 12 / 52,
-             "HresProdScieriesParSem": 44 + 44,
+             "HresProdScieriesParSem": 168, #44 + 44,
              "VariationProdScierie": 0.1,  # Pourcentage de variation de la demande par rapport à la production de la scierie
              "VariationTempsSechage": 0.1,
              "VariationTempsDeplLoader": 0.1,
-             "VariationDemandeVSProd" : 0.25
+             "FacteurSortieScierie" : 1, # Permet de sortir plus ou moins de la scierie (1 correspond à sortir exactement ce qui est prévu)
+             "ObjectifStableEnPMP" : 215000 * 4 * 2.5
              }
 
     # Pour faciliter le développement, on s'assure d'avoir toujours le mêmes
@@ -330,12 +423,27 @@ if __name__ == '__main__':
                
     done = False
     _, reelle = env.getProportions()
+    lstQteDansCours = []
+    lstQteStable = []
+    lstinf = []
+    lstsup = []
     propReelle = reelle
     while not done:         
         done = env.stepSimpy(ActionValideAleatoire(env))
         _, reelle = env.getProportions()
         propReelle += reelle
+        QteDansCours, QteStable, inf, sup = env.getIndicateursInventaire()
+        lstQteDansCours.append(QteDansCours[4])
+        lstQteStable.append(QteStable[4])
+        lstinf.append(inf[4])
+        lstsup.append(sup[4])
+        env.getState()
+            
     
+    plt.plot(lstQteDansCours)
+    plt.plot(lstQteStable)
+    plt.plot(lstinf)
+    plt.plot(lstsup)
     
     timer_après = time.time()
     
@@ -345,7 +453,7 @@ if __name__ == '__main__':
     regles = env.np_regles
 
     #print(propVoulu)
-    print(propReelle)
+    #print(propReelle)
     print("Temps d'exécution : ", timer_après-timer_avant)
     #print("Durée en h/j/an de la simulation : ", env.now, env.now/ 24, env.now/24/365)
     
