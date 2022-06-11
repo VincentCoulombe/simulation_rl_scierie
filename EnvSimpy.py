@@ -253,7 +253,6 @@ class EnvSimpy(simpy.Environment):
         #lstProdVsDemandeMinMax = min_max_scaling(self.lstProdVsDemande.astype(float),-25000,25000)
         
         QteDansCours = min_max_scaling(self.QteDansCours,0,self.paramSimu["CapaciteSortieSciage"])
-        
         return np.concatenate(([self.PropEpinettesSortieSciage],QteDansCours))
     
     # Retourne la quantité totale séchée et sciée pour chaque produits depuis le début de la simulation
@@ -279,7 +278,7 @@ class EnvSimpy(simpy.Environment):
             if self.lesLoader[key].bAttente :
                 AttenteTotale += self.now - self.lesLoader[key].debutAttente
                 
-        return 1 - (AttenteTotale / self.paramSimu["nbLoader"] / self.now)
+        return 1 - (AttenteTotale / self.paramSimu["nbLoader"] / self.now) if self.now>0 else 0
 
     # Retourne le taux d'utilisation de la scierie.  Le calcul tient compte de toutes les attentes
     # terminées ainsi que l'attente en cours s'il y a lieu.  L'attente est comptée juste
@@ -296,12 +295,13 @@ class EnvSimpy(simpy.Environment):
         NbSechoirs = 0
         for key in self.lesEmplacements.keys() :
             if "Séchoir" in key :
-                TempsComplet += env.lesEmplacements[key].getTauxUtilisationComplet()
+                TempsComplet += self.lesEmplacements[key].getTauxUtilisationComplet()
                 NbSechoirs += 1
                 
         return TempsComplet / NbSechoirs
-
-
+    
+    def getTauxRemplissageCours(self):
+        return self.lesEmplacements["Sortie sciage"].count() / self.paramSimu["CapaciteSortieSciage"]
 
 # Lance les différents sciages selon le rythme prédéterminé dans les règles
 def Sciage(env,npUneRegle) :
