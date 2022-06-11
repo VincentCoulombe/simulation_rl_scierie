@@ -252,8 +252,7 @@ class EnvSimpy(simpy.Environment):
         # Est-ce que les stocks sont stables dans la cours
         #lstProdVsDemandeMinMax = min_max_scaling(self.lstProdVsDemande.astype(float),-25000,25000)
         
-        # QteDansCours = min_max_scaling(self.QteDansCours,0,self.paramSimu["CapaciteSortieSciage"])
-        QteDansCours = self.QteDansCours
+        QteDansCours = min_max_scaling(self.QteDansCours,0,self.paramSimu["CapaciteSortieSciage"])
         return np.concatenate(([self.PropEpinettesSortieSciage],QteDansCours))
     
     # Retourne la quantité totale séchée et sciée pour chaque produits depuis le début de la simulation

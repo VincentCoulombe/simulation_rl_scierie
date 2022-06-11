@@ -148,4 +148,7 @@ class EnvGym(gym.Env) :
         plt.show()
             
         print(f"Moyenne Reward : {self.get_avg_reward():.2f}")
-
+        
+    def solve_w_heuristique(self, heuristique: str = "Aléatoire"):
+        pass
+        #TODO Heuristique dans heuristique.py prendre le produit réel le plus dans le champs au temps t
