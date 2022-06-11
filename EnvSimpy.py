@@ -300,8 +300,9 @@ class EnvSimpy(simpy.Environment):
                 NbSechoirs += 1
                 
         return TempsComplet / NbSechoirs
-
-
+    
+    def getTauxRemplissageCours(self):
+        return self.lesEmplacements["Sortie sciage"].count() / self.paramSimu["CapaciteSortieSciage"]
 
 # Lance les différents sciages selon le rythme prédéterminé dans les règles
 def Sciage(env,npUneRegle) :

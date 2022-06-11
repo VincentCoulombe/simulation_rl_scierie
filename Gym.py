@@ -41,8 +41,6 @@ class EnvGym(gym.Env) :
         diff_proportion_qte = obj_proportion_inf-obj_qte_total # Si différence positive, on a trop de container de ce type dans la cours
         respect_obj_qte_total = -sum(ecart**2 for ecart in diff_proportion_qte if ecart>0) # Punis si les containers de trop dans la cours
         
-        respect_obj_qte_total = 0 # Check juste l'autre objectif
-        
         outside_prop_range_prenalty = [] # Garder la proportion réelle dans le range de proportion voulu
         inside_prop_range_bonus = []
         for qte_reelle, obj_prop_inf, obj_prop_sup, obj_qte_total in zip(qte_dans_cours, obj_proportion_inf, obj_proportion_sup, obj_qte_total):
@@ -69,13 +67,17 @@ class EnvGym(gym.Env) :
         self.inds_inventaires = []
         self.taux_utilisations = []
         self._update_observation() 
+        self.step_counter = 0
         return self.state   
     
-    def step (self, action) -> tuple: 
+    def step (self, action, verbose=False) -> tuple: 
         self.done = self.env.stepSimpy(action)
         self._update_reward()
         self._update_observation()
-        
+        self.step_counter += 1
+        total_steps = self.env.paramSimu["NbStepSimulation"]
+        if verbose and self.step_counter in [round(0.25*total_steps), round(0.5*total_steps), round(0.75*total_steps)]:
+            print(f"Step {self.step_counter}/{total_steps} terminé. Reward : {self.reward:.2f}")
         if self.done:
             self.simu_counter += 1
             print(f"Simulation {self.simu_counter} terminée.")
