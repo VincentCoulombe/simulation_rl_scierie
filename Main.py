@@ -34,7 +34,8 @@ if __name__ == '__main__':
              "VariationTempsSechage": 0.1,
              "VariationTempsDeplLoader": 0.1,
              "FacteurSortieScierie" : 1, # Permet de sortir plus ou moins de la scierie (1 correspond à sortir exactement ce qui est prévu)
-             "ObjectifStableEnPMP" : 215000 * 4 * 2.5
+             "ObjectifStableEnPMP" : 215000 * 4 * 2.5,
+             "RatioSapinEpinette" : "50/50"
              }
 
     hyperparams = {"n_steps": 16,
