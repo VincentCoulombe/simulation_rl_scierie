@@ -96,8 +96,8 @@ class EnvGym(gym.Env) :
         for i in range(nb_episode):
             self.reset()
             model.learn(total_timesteps=self.hyperparams["total_timesteps"], reset_num_timesteps=False)
-            print(f"Indicateurs du modèle après l'épisode : {i}")
             if nb_episode % evaluate_every == 0:
+                print(f"Indicateurs du modèle après l'épisode : {i}")
                 self.evaluate_model(model)
             if save:
                 model.save(f"{models_dir}/episode{i}_reward_moyen{self.get_avg_reward():.2f}")
