@@ -18,7 +18,7 @@ if __name__ == '__main__':
     regles = pd.read_csv("DATA/regle.csv")
         
     paramSimu = {"df_regles": regles,
-             "NbStepSimulation": 64*5,
+             "NbStepSimulation": 64*1,
              "NbStepSimulationTest": 64*10,
              "nbLoader": 1,
              "nbSechoir1": 4,
@@ -51,6 +51,7 @@ if __name__ == '__main__':
     model = PPO('MlpPolicy', envRL, n_steps=hyperparams["n_steps"], batch_size=hyperparams["batch_size"], n_epochs=hyperparams["n_epochs"], learning_rate=hyperparams["lr"], verbose=0)
     envRL.evaluate_model(model)
     # model.learn(total_timesteps=hyperparams["total_timesteps"], reset_num_timesteps=False)
+    envRL.train_model(model, 1, save=True)
     
     print(f"Temps d'exécution : {time.time()-timer_avant:.2f}")
     

@@ -41,15 +41,18 @@ class EnvGym(gym.Env) :
         diff_proportion_qte = obj_proportion_inf-obj_qte_total # Si différence positive, on a trop de container de ce type dans la cours
         respect_obj_qte_total = -sum(ecart**2 for ecart in diff_proportion_qte if ecart>0) # Punis si les containers de trop dans la cours
         
-        diff_reel_proportion = [] # Garder la proportion réelle dans le range de proportion voulu
-        for qte_reelle, obj_prop_inf, obj_prop_sup in zip(qte_dans_cours, obj_proportion_inf, obj_proportion_sup):
+        respect_obj_qte_total = 0 # Check juste l'autre objectif
+        
+        outside_prop_range_prenalty = [] # Garder la proportion réelle dans le range de proportion voulu
+        inside_prop_range_bonus = []
+        for qte_reelle, obj_prop_inf, obj_prop_sup, obj_qte_total in zip(qte_dans_cours, obj_proportion_inf, obj_proportion_sup, obj_qte_total):
             if qte_reelle > obj_prop_sup:
-                diff_reel_proportion.append(qte_reelle-obj_prop_sup)
+                outside_prop_range_prenalty.append(qte_reelle-obj_prop_sup)
             elif qte_reelle < obj_prop_inf:
-                diff_reel_proportion.append(obj_prop_inf-qte_reelle)
+                outside_prop_range_prenalty.append(obj_prop_inf-qte_reelle)
             else:
-                diff_reel_proportion.append(0)                
-        respect_obj_proportion = -sum(ecart**2 for ecart in diff_reel_proportion) # Punis si la proportion sort du range voulu
+                inside_prop_range_bonus.append(1)                
+        respect_obj_proportion = -sum(ecart**2 for ecart in outside_prop_range_prenalty) + sum(inside_prop_range_bonus) # Punis si la proportion sort du range voulu et récompense sinon
         
         self.reward = respect_obj_qte_total+respect_obj_proportion
         
@@ -83,7 +86,7 @@ class EnvGym(gym.Env) :
         
         return self.state, self.reward, self.done, self.info
     
-    def train_model(self, model: PPO, nb_episode: int, save: bool=False):
+    def train_model(self, model: PPO, nb_episode: int, save: bool=False, evaluate_every: int = 20):
         logs_dir = f"logs/logs_{int(time.time())}/"
         os.makedirs(logs_dir, exist_ok=True)
         if save:
@@ -92,9 +95,10 @@ class EnvGym(gym.Env) :
         
         for i in range(nb_episode):
             self.reset()
-            model.learn(total_timesteps=self.hyperparams["total_timesteps"], reset_num_timesteps=True)
+            model.learn(total_timesteps=self.hyperparams["total_timesteps"], reset_num_timesteps=False)
             print(f"Indicateurs du modèle après l'épisode : {i}")
-            self.evaluate_model(model)
+            if nb_episode % evaluate_every == 0:
+                self.evaluate_model(model)
             if save:
                 model.save(f"{models_dir}/episode{i}_reward_moyen{self.get_avg_reward():.2f}")
                 
