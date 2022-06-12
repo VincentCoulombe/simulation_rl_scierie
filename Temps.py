@@ -126,6 +126,13 @@ def HeuresProductives(df,debut,fin):
         Durée en heures (réel) de travail productive entre debut et fin
     """
 
+    # Si l'heure de début excéde l'heure de fin, il n'y a pas d'heures productives
+    # (Cette situation pourrait survenir si on ne gère pas bien certaines transitions entre le 
+    # régime transitoire et le permanent.  Les indicateurs comptes à partir du régime permanent
+    # et on se compare au now)
+    if debut >= fin : 
+        return 0
+
     # Ramener le calcul à partir de la première semaine pour être certain
     # de ne pas défoncé l'année... Permet de réutiliser directement le code déjà 
     # fonctionnel pour 1 an, mais pourrait être à revoir si la gestion de semaines/mois
@@ -203,7 +210,7 @@ if __name__ == "__main__":
                     
             #now += 1 * 24
     debut = 189.17756324661573 
-    fin = 232.8203783310047
+    fin = debut-5
     print("Calculer",HeuresProductives(df,debut,fin))
     print("Bon 24/7", fin-debut)
     print(GetInfosTemps(debut))

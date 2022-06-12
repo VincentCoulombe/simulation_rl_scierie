@@ -51,6 +51,7 @@ class EnvSimpy(simpy.Environment):
         self.nbStep = 0
         self.RewardActionInvalide = False
         self.DernierCharg = 0
+        self.DebutRegimePermanent = 999999999999
         
         # Gestion de la proportion Sapin/Épinette
         if paramSimu["RatioSapinEpinette"] == "50/50" : 
@@ -120,9 +121,30 @@ class EnvSimpy(simpy.Environment):
         
         self.EnrEven("Début simulation")
         print("Début de la simulation")
-
-
         
+        self.InitEnvInitialAleatoire()
+
+
+    # Initialise une cours aléatoirement en roulant la simulation pendant un 
+    # certains temps (régime transitoire).  On considère une cours intéressante
+    # quand nous avons maximum 1 séchoir de libre et que notre cours contient
+    # au moins le nombre de chargement de notre objectif stable - 2
+    def InitEnvInitialAleatoire(self) : 
+        
+        while sum(self.QteDansCours - self.ObjectifStable) < -2 or NbSechoirsPleins < self.paramSimu["nbSechoir1"] -1 : 
+            self.stepSimpy(pile_la_plus_elevee(self))
+            
+            NbSechoirsPleins = 0
+            for i in range(self.paramSimu["nbSechoir1"]) : 
+                NbSechoirsPleins += self.lesEmplacements["Séchoir " + str(i+1)].EstPlein()
+
+            
+        self.nbStep = 0
+        self.DebutRegimePermanent = self.now
+        
+        self.EnrEven("Début régime permanent")
+        print("Début régime permanent")
+                
     # Enregistre simplement un événement dans la liste des événements passés
     def EnrEven(self,Evenement,NomLoader=None, Charg = None, Source = None, Destination = None) : 
 
@@ -273,7 +295,7 @@ class EnvSimpy(simpy.Environment):
         day_of_week = min_max_scaling(day_of_week,1,7)
         hour = min_max_scaling(hour,0,24)
 
-        return np.concatenate(([self.PropEpinettesSortieSciage,day_of_week,hour],QteDansCours))
+        return np.concatenate(([self.PropEpinettesSortieSciage],QteDansCours,[day_of_week,hour]))
     
     # Retourne la quantité totale séchée et sciée pour chaque produits depuis le début de la simulation
     def getQteTotale(self) :     
@@ -291,15 +313,18 @@ class EnvSimpy(simpy.Environment):
     # Retourne le taux d'utilisation des loader.  Le calcul tient compte de toutes les attentes
     # terminées ainsi que l'attente en cours s'il y a lieu
     def getTauxUtilisationLoader(self) : 
-        
+
         AttenteTotale = 0
         for key in self.lesLoader.keys() : 
             AttenteTotale += self.lesLoader[key].AttenteTotale            
             if self.lesLoader[key].bAttente :
-                #AttenteTotale += self.now - self.lesLoader[key].debutAttente
-                AttenteTotale += HeuresProductives(self.df_HoraireLoader,self.lesLoader[key].debutAttente,self.now)
                 
-        return 1 - (AttenteTotale / self.paramSimu["nbLoader"] / HeuresProductives(self.df_HoraireLoader,0,self.now)) if self.now>0 else 0
+                AttenteTotale += HeuresProductives(self.df_HoraireLoader,max(self.DebutRegimePermanent,self.lesLoader[key].debutAttente),self.now)
+                
+        #print(self.now,self.DebutRegimePermanent,AttenteTotale,HeuresProductives(self.df_HoraireLoader,self.DebutRegimePermanent,self.now))
+        #exit
+                
+        return 1 - (AttenteTotale / self.paramSimu["nbLoader"] / HeuresProductives(self.df_HoraireLoader,self.DebutRegimePermanent,self.now)) if self.now>0 else 0
 
     # Retourne le taux d'utilisation de la scierie.  Le calcul tient compte de toutes les attentes
     # terminées ainsi que l'attente en cours s'il y a lieu.  L'attente est comptée juste
@@ -440,7 +465,7 @@ if __name__ == '__main__':
              "NbStepSimulationTest": 64*2,
              "nbLoader": 1,
              "nbSechoir1": 4,
-             "CapaciteSortieSciage": 100, # En nombre de chargements avant de bloquer la scierie
+             "CapaciteSortieSciage": 250, # En nombre de chargements avant de bloquer la scierie
              "CapaciteSechageAirLibre": 0,
              "CapaciteCours": 0,
              "TempsAttenteLoader": 1,
@@ -478,7 +503,7 @@ if __name__ == '__main__':
     lstUtilScierie = []
     propReelle = reelle
     while not done:         
-        done = env.stepSimpy(ActionValideAleatoire(env))
+        done = env.stepSimpy(pile_la_plus_elevee(env)) #ActionValideAleatoire(env))
         _, reelle = env.getProportions()
         propReelle += reelle
         QteDansCours, QteStable, inf, sup = env.getIndicateursInventaire()

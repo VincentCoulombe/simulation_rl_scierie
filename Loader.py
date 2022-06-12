@@ -92,8 +92,7 @@ class Loader() :
             # s'il était précédemment en attente, terminé l'attente et conserver la durée pour nos indicateurs
             if self.bAttente : 
                 self.bAttente = False
-                #self.AttenteTotale += self.env.now - self.debutAttente
-                self.AttenteTotale += HeuresProductives(self.env.df_HoraireLoader,self.debutAttente,self.env.now)
+                self.AttenteTotale += HeuresProductives(self.env.df_HoraireLoader,max(self.env.DebutRegimePermanent,self.debutAttente),self.env.now)
             
             self.env.EnrEven("Début déplacement",NomLoader = self.NomLoader,Charg = charg, Source = source, Destination = destination)
             self.env.npCharg[charg][self.env.cCharg["Emplacement"]] = self.NomLoader

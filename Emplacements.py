@@ -35,7 +35,7 @@ class Emplacements(simpy.Resource) :
             env.EnrEven("Place à nouveau disponible", Destination=self.Nom)
             
             if self.DebutPlein != -1 : 
-                self.PleinTotale += HeuresProductives(self.df_horaire,self.DebutPlein,self.env.now)
+                self.PleinTotale += HeuresProductives(self.df_horaire,max(self.env.DebutRegimePermanent,self.DebutPlein),self.env.now)
                 self.DebutPlein = -1
         
         request = self.lstRequest.pop(0)
@@ -58,8 +58,8 @@ class Emplacements(simpy.Resource) :
         
         PleinTotal = self.PleinTotale
         if self.DebutPlein != -1 : 
-            PleinTotal += HeuresProductives(self.df_horaire,self.DebutPlein,self.env.now)
+            PleinTotal += HeuresProductives(self.df_horaire,max(self.env.DebutRegimePermanent,self.DebutPlein),self.env.now)
             
-        return PleinTotal / HeuresProductives(self.df_horaire,0,self.env.now) if self.env.now > 0 else 0
+        return PleinTotal / HeuresProductives(self.df_horaire,self.env.DebutRegimePermanent,self.env.now) if self.env.now > 0 else 0
         
         
