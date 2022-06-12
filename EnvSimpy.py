@@ -28,6 +28,7 @@ from Temps import *
 # récupération du main (les paramSimu)
 # prendre en compte les différentes planification de production (mixte, épinette, sapin)
 # horaire loader et scierie
+# Générer une cours initiale pour ne pas commencer à vide (attention pour ne pas brisé les indicateurs qui compte les qtés qui sortent direct sur npCharg)
 
 ############### Idées, mais à voir si on va le faire
 # Inclure du séchage à l'air libre (voir procédure SechageAirLibre déjà commencée)
@@ -37,7 +38,6 @@ from Temps import *
 # aléatoire selon les quantités de chaque produits dans la cours au lieu de juste choisir une règle (éviterait de toujours vider les règles)
 
 ############### à faire
-# Générer une cours initiale pour ne pas commencer à vide (attention pour ne pas brisé les indicateurs qui compte les qtés qui sortent direct sur npCharg)
 # gestion des planifications (dans simulation ou RL ?)
 
 
@@ -137,7 +137,6 @@ class EnvSimpy(simpy.Environment):
             NbSechoirsPleins = 0
             for i in range(self.paramSimu["nbSechoir1"]) : 
                 NbSechoirsPleins += self.lesEmplacements["Séchoir " + str(i+1)].EstPlein()
-
             
         self.nbStep = 0
         self.DebutRegimePermanent = self.now
@@ -377,6 +376,9 @@ def Sciage(env,npUneRegle) :
     
     while prodMoyPMPHr > 0 :
 
+        # On bloque la scierie s'il n'y a pas d'espace pour sortir le chargement
+        yield env.lesEmplacements["Sortie sciage"].request()     
+
         # Première itération de la boucle, on met un délai pouvant être plus court pour ne pas avoir une
         # période au début de la simulation qu'il n'y a rien qui sort de la scierie
         if bPremierSciage : 
@@ -387,9 +389,6 @@ def Sciage(env,npUneRegle) :
         else : 
             duree = random.triangular(dureeMinCharg,dureeMaxCharg,dureeMoyCharg)
             yield env.timeout(task_total_length(env.lesEmplacements["Sortie sciage"].df_horaire,env.now,duree)) 
-
-        # On bloque la scierie s'il n'y a pas d'espace pour sortir le chargement
-        yield env.lesEmplacements["Sortie sciage"].request()         
 
         # On sort la quantité de la scierie       
         env.DernierCharg += 1
