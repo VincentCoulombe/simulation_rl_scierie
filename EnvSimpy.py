@@ -121,6 +121,7 @@ class EnvSimpy(simpy.Environment):
         self.EnrEven("Début simulation")
         print("Début de la simulation")
 
+
         
     # Enregistre simplement un événement dans la liste des événements passés
     def EnrEven(self,Evenement,NomLoader=None, Charg = None, Source = None, Destination = None) : 
@@ -485,7 +486,6 @@ if __name__ == '__main__':
         lstQteStable.append(QteStable[4])
         lstinf.append(inf[4])
         lstsup.append(sup[4])
-        env.getState()
         lstUtilScierie.append(env.getTauxUtilisationScierie())
         lstUtilSechoir.append(env.getTauxUtilisationSechoirs())
         lstUtilLoader.append(env.getTauxUtilisationLoader())
@@ -510,7 +510,7 @@ if __name__ == '__main__':
     regles = env.np_regles
 
     #print(propVoulu)
-    print(propReelle)
+    #print(propReelle)
     print("Temps d'exécution : ", timer_après-timer_avant)
     #print("Durée en h/j/an de la simulation : ", env.now, env.now/ 24, env.now/24/365)
     
