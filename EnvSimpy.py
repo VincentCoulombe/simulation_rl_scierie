@@ -13,6 +13,7 @@ from Loader import *
 from Emplacements import *
 from utils import *
 from Temps import *
+from Heuristiques import *
 
 ############### Done
 # prendre en compte dernier fichier Francis pour temsp chargement
@@ -29,6 +30,7 @@ from Temps import *
 # prendre en compte les différentes planification de production (mixte, épinette, sapin)
 # horaire loader et scierie
 # Générer une cours initiale pour ne pas commencer à vide (attention pour ne pas brisé les indicateurs qui compte les qtés qui sortent direct sur npCharg)
+# Meilleur gestion des blocages de la scierie
 
 ############### Idées, mais à voir si on va le faire
 # Inclure du séchage à l'air libre (voir procédure SechageAirLibre déjà commencée)
@@ -70,7 +72,7 @@ class EnvSimpy(simpy.Environment):
         
         # Création des numpy pour conserver tout le calendrier d'événements ainsi que chaque chargement produit
         self.Evenements = np.asarray([["Temps","Événement","Loader","Source", "Destination","Charg","description"]],dtype='U50')
-        self.npCharg = np.array([["Temps","Charg","regle","description","Emplacement","temps sechage"]],dtype='U50')
+        self.npCharg = np.array([["Temps","Charg","regle","description","essence","Emplacement","temps sechage"]],dtype='U50')
                 
         
         # Dictionnaires permettant de se rendre indépendant des numéros de colonnes malgré qu'on soit 
@@ -79,8 +81,9 @@ class EnvSimpy(simpy.Environment):
                       "Charg" : 1,
                       "regle" : 2,
                       "description" : 3,
-                      "Emplacement" : 4,
-                      "temps sechage" : 5}
+                      "essence" : 4,
+                      "Emplacement" : 5,
+                      "temps sechage" : 6}
         
         # Transférer le pandas dans un numpy en conservant le nom des colonnes comme première ligne
         # pour faciliter le débuggage.  Un dictionnaire permettant de se rendre indépendant des numéros 
@@ -323,7 +326,7 @@ class EnvSimpy(simpy.Environment):
         #print(self.now,self.DebutRegimePermanent,AttenteTotale,HeuresProductives(self.df_HoraireLoader,self.DebutRegimePermanent,self.now))
         #exit
                 
-        return 1 - (AttenteTotale / self.paramSimu["nbLoader"] / HeuresProductives(self.df_HoraireLoader,self.DebutRegimePermanent,self.now)) if self.now>0 else 0
+        return 1 - (AttenteTotale / self.paramSimu["nbLoader"] / HeuresProductives(self.df_HoraireLoader,self.DebutRegimePermanent,self.now)) if HeuresProductives(self.df_HoraireLoader,self.DebutRegimePermanent,self.now)>0 else 0
 
     # Retourne le taux d'utilisation de la scierie.  Le calcul tient compte de toutes les attentes
     # terminées ainsi que l'attente en cours s'il y a lieu.  L'attente est comptée juste
@@ -358,6 +361,7 @@ def Sciage(env,npUneRegle) :
     description = npUneRegle[env.cRegle["description"]]
     volumeSechoir1 = float(npUneRegle[env.cRegle["sechoir1"]])
     tempsSechage = float(npUneRegle[env.cRegle["temps sechage"]])
+    essence = npUneRegle[env.cRegle["essence"]]
     
     # Ramener le temps nécessaire pour le produit en heure pour utilisation par le yield plus tard
     if env.paramSimu["RatioSapinEpinette"] == "50/50" : 
@@ -393,7 +397,7 @@ def Sciage(env,npUneRegle) :
         # On sort la quantité de la scierie       
         env.DernierCharg += 1
         emplacement = "Sortie sciage"
-        nouveaunp = np.asarray([[env.now,env.DernierCharg,produit,description,emplacement,tempsSechage]],dtype='U50')
+        nouveaunp = np.asarray([[env.now,env.DernierCharg,produit,description,essence, emplacement,tempsSechage]],dtype='U50')
         env.npCharg = np.vstack((env.npCharg,nouveaunp))
         env.EnrEven("Sortie sciage",Charg = env.DernierCharg)
         
@@ -441,12 +445,21 @@ def Sechage(env,charg,NomPrepSechage) :
 # qui fait la mise à jour est en commentaire pour s'assurer que si on en tiens compte, on le fait comme 
 # il faut.
 def SechageAirLibre(env,charg): 
+       
+    return
     
-    while env.npCharg[charg][env.cCharg["Emplacement"]] != "Sortie séchoir" :
+    TempsInitial = float(env.npCharg[charg][env.cCharg["temps sechage"]])
+    TempsMin = TempsInitial * (1-env.paramSimu["MaxSechageAirLibre"])
+    
+    while env.npCharg[charg][env.cCharg["Emplacement"]] == "Sortie sciage" :
         
         yield env.timeout(env.paramSimu["TempsSechageAirLibre"])
         
-        #env.npCharg[charg][env.cCharg["temps sechage"]] = str(float(env.npCharg[charg][env.cCharg["temps sechage"]]) * (1- env.paramSimu["RatioSechageAirLibre"]))
+        tempsReduit = float(env.npCharg[charg][env.cCharg["temps sechage"]]) * (1- env.paramSimu["RatioSechageAirLibre"])
+        env.npCharg[charg][env.cCharg["temps sechage"]] = str(max(TempsMin,tempsReduit))
+        
+        if tempsReduit < TempsMin : 
+            return
 
 if __name__ == '__main__': 
        
@@ -471,6 +484,7 @@ if __name__ == '__main__':
              "TempsAttenteActionInvalide": 10,
              "TempsSechageAirLibre": 7 * 24,
              "RatioSechageAirLibre": 0.1 * 12 / 52,
+             "MaxSechageAirLibre" : 30/100,
              "HresProdScieriesParSem": sum(df_HoraireScierie[:168]["work_time"]),
              "VariationProdScierie": 0.1,  # Pourcentage de variation de la demande par rapport à la production de la scierie
              "VariationTempsSechage": 0.1,

@@ -60,6 +60,6 @@ class Emplacements(simpy.Resource) :
         if self.DebutPlein != -1 : 
             PleinTotal += HeuresProductives(self.df_horaire,max(self.env.DebutRegimePermanent,self.DebutPlein),self.env.now)
             
-        return PleinTotal / HeuresProductives(self.df_horaire,self.env.DebutRegimePermanent,self.env.now) if self.env.now > 0 else 0
+        return PleinTotal / HeuresProductives(self.df_horaire,self.env.DebutRegimePermanent,self.env.now) if HeuresProductives(self.df_horaire,self.env.DebutRegimePermanent,self.env.now) > 0 else 0
         
         

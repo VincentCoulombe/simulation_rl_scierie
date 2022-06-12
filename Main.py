@@ -36,6 +36,7 @@ if __name__ == '__main__':
              "TempsAttenteActionInvalide": 10,
              "TempsSechageAirLibre": 7 * 24,
              "RatioSechageAirLibre": 0.1 * 12 / 52,
+             "MaxSechageAirLibre" : 30/100,
              "HresProdScieriesParSem": sum(df_HoraireScierie[:168]["work_time"]),
              "VariationProdScierie": 0.1,  # Pourcentage de variation de la demande par rapport à la production de la scierie
              "VariationTempsSechage": 0.1,
