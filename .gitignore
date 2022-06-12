@@ -29,3 +29,7 @@ logs/
 models/training_1654987723/episode0_reward_moyen9.08
 __pycache__/Temps.cpython-38.pyc
 time.py
+Archive/utils.py
+Archive/Temps.py
+Archive/Main.py
+Archive/Emplacements.py

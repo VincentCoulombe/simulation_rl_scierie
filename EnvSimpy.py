@@ -27,6 +27,7 @@ from Temps import *
 # gestion tannante numpy (1ère ligne et string)
 # récupération du main (les paramSimu)
 # prendre en compte les différentes planification de production (mixte, épinette, sapin)
+# horaire loader et scierie
 
 ############### Idées, mais à voir si on va le faire
 # Inclure du séchage à l'air libre (voir procédure SechageAirLibre déjà commencée)
@@ -37,7 +38,7 @@ from Temps import *
 
 ############### à faire
 # Générer une cours initiale pour ne pas commencer à vide (attention pour ne pas brisé les indicateurs qui compte les qtés qui sortent direct sur npCharg)
-# horaire de travail des loaders
+# gestion des planifications (dans simulation ou RL ?)
 
 
 
@@ -50,8 +51,6 @@ class EnvSimpy(simpy.Environment):
         self.nbStep = 0
         self.RewardActionInvalide = False
         self.DernierCharg = 0
-        self.df_HoraireLoader = paramSimu["df_HoraireLoader"]
-        self.df_HoraireScierie = paramSimu["df_HoraireScierie"]
         
         # Gestion de la proportion Sapin/Épinette
         if paramSimu["RatioSapinEpinette"] == "50/50" : 
@@ -92,7 +91,7 @@ class EnvSimpy(simpy.Environment):
         
         ####### Création des différents emplacements ou le bois peut se trouver.  
         self.lesEmplacements = {}
-        self.lesEmplacements["Sortie sciage"] = Emplacements(Nom = "Sortie sciage", env=self,capacity=self.paramSimu["CapaciteSortieSciage"])
+        self.lesEmplacements["Sortie sciage"] = Emplacements(Nom = "Sortie sciage", env=self,df_horaire=paramSimu["df_HoraireScierie"],capacity=self.paramSimu["CapaciteSortieSciage"])
         
         if self.paramSimu["CapaciteCours"] > 0  : 
             self.lesEmplacements["Cours"] = Emplacements(Nom = "Cours", env=self,capacity=self.paramSimu["CapaciteCours"])
@@ -106,6 +105,7 @@ class EnvSimpy(simpy.Environment):
         #######
         
         # Création des différents loaders nécessaires pour la simulation
+        self.df_HoraireLoader = paramSimu["df_HoraireLoader"]
         self.lesLoader = {}
         for i in range(self.paramSimu["nbLoader"]) : 
             self.lesLoader["Loader " + str(i+1)] = Loader(NomLoader = "Loader " + str(i+1), env = self)
@@ -121,7 +121,7 @@ class EnvSimpy(simpy.Environment):
         self.EnrEven("Début simulation")
         print("Début de la simulation")
 
-    
+        
     # Enregistre simplement un événement dans la liste des événements passés
     def EnrEven(self,Evenement,NomLoader=None, Charg = None, Source = None, Destination = None) : 
 
@@ -264,8 +264,15 @@ class EnvSimpy(simpy.Environment):
         # Est-ce que les stocks sont stables dans la cours
         #lstProdVsDemandeMinMax = min_max_scaling(self.lstProdVsDemande.astype(float),-25000,25000)
         
+        # Quantités dans la cours (liste par règles)
         QteDansCours = min_max_scaling(self.QteDansCours,0,self.paramSimu["CapaciteSortieSciage"])
-        return np.concatenate(([self.PropEpinettesSortieSciage],QteDansCours))
+        
+        # Information sur le moment
+        day_of_week, hour = GetInfosTemps(self.now)
+        day_of_week = min_max_scaling(day_of_week,1,7)
+        hour = min_max_scaling(hour,0,24)
+
+        return np.concatenate(([self.PropEpinettesSortieSciage,day_of_week,hour],QteDansCours))
     
     # Retourne la quantité totale séchée et sciée pour chaque produits depuis le début de la simulation
     def getQteTotale(self) :     
@@ -288,9 +295,10 @@ class EnvSimpy(simpy.Environment):
         for key in self.lesLoader.keys() : 
             AttenteTotale += self.lesLoader[key].AttenteTotale            
             if self.lesLoader[key].bAttente :
-                AttenteTotale += self.now - self.lesLoader[key].debutAttente
+                #AttenteTotale += self.now - self.lesLoader[key].debutAttente
+                AttenteTotale += HeuresProductives(self.df_HoraireLoader,self.lesLoader[key].debutAttente,self.now)
                 
-        return 1 - (AttenteTotale / self.paramSimu["nbLoader"] / self.now) if self.now>0 else 0
+        return 1 - (AttenteTotale / self.paramSimu["nbLoader"] / HeuresProductives(self.df_HoraireLoader,0,self.now)) if self.now>0 else 0
 
     # Retourne le taux d'utilisation de la scierie.  Le calcul tient compte de toutes les attentes
     # terminées ainsi que l'attente en cours s'il y a lieu.  L'attente est comptée juste
@@ -318,6 +326,8 @@ class EnvSimpy(simpy.Environment):
 # Lance les différents sciages selon le rythme prédéterminé dans les règles
 def Sciage(env,npUneRegle) :
     
+    bPremierSciage = True
+    
     # Récupération des informations de bases
     produit = int(npUneRegle[env.cRegle["regle"]])
     description = npUneRegle[env.cRegle["description"]]
@@ -330,9 +340,10 @@ def Sciage(env,npUneRegle) :
     elif env.paramSimu["RatioSapinEpinette"] == "75/25" : 
         prodMoyPMPSem = max(0,float(npUneRegle[env.cRegle["production epinette"]])) * env.paramSimu["FacteurSortieScierie"]
     elif env.paramSimu["RatioSapinEpinette"] == "25/75" : 
-            prodMoyPMPSem = max(0,float(npUneRegle[env.cRegle["production sapin"]])) * env.paramSimu["FacteurSortieScierie"]
+        prodMoyPMPSem = max(0,float(npUneRegle[env.cRegle["production sapin"]])) * env.paramSimu["FacteurSortieScierie"]
     
     prodMoyPMPHr = prodMoyPMPSem / env.paramSimu["HresProdScieriesParSem"]
+    
     if prodMoyPMPHr > 0 : 
         dureeMoyCharg = volumeSechoir1 / prodMoyPMPHr
         dureeMinCharg = dureeMoyCharg * (1-env.paramSimu["VariationProdScierie"])
@@ -340,8 +351,16 @@ def Sciage(env,npUneRegle) :
     
     while prodMoyPMPHr > 0 :
 
-        # Temps inter-sortie du sciage
-        yield env.timeout(random.triangular(dureeMinCharg,dureeMaxCharg,dureeMoyCharg)) 
+        # Première itération de la boucle, on met un délai pouvant être plus court pour ne pas avoir une
+        # période au début de la simulation qu'il n'y a rien qui sort de la scierie
+        if bPremierSciage : 
+            duree = max(1,random.random() * dureeMoyCharg)
+            yield env.timeout(task_total_length(env.lesEmplacements["Sortie sciage"].df_horaire,env.now,duree)) 
+        
+        # Temps inter-sortie du sciage standard pour les itérations autre que la première
+        else : 
+            duree = random.triangular(dureeMinCharg,dureeMaxCharg,dureeMoyCharg)
+            yield env.timeout(task_total_length(env.lesEmplacements["Sortie sciage"].df_horaire,env.now,duree)) 
 
         # On bloque la scierie s'il n'y a pas d'espace pour sortir le chargement
         yield env.lesEmplacements["Sortie sciage"].request()         
@@ -385,7 +404,8 @@ def Sechage(env,charg,NomPrepSechage) :
     TempsDeChargement = float(env.np_regles[env.np_regles[:,env.cRegle["regle"]] == regle,env.cRegle["temps chargement"]])
     dureemin = TempsDeChargement * (1-env.paramSimu["VariationTempsDeplLoader"])
     dureemax = TempsDeChargement * (1+env.paramSimu["VariationTempsDeplLoader"]) 
-    yield env.timeout(random.triangular(dureemin,dureemax,TempsDeChargement))
+    duree = random.triangular(dureemin,dureemax,TempsDeChargement)
+    yield env.timeout(task_total_length(env.df_HoraireLoader,env.now,duree)) 
     env.lesEmplacements[NomPrepSechage].release(env)
        
 
@@ -409,10 +429,12 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     
     regles = pd.read_csv("DATA/regle.csv")
+    df_HoraireScierie = work_schedule()
+    df_HoraireLoader = work_schedule()
         
     paramSimu = {"df_regles": regles,
-             "df_HoraireLoader" : work_schedule(),
-             "df_HoraireScierie" : work_schedule(),
+             "df_HoraireLoader" : df_HoraireLoader,
+             "df_HoraireScierie" : df_HoraireScierie,
              "NbStepSimulation": 64*5,
              "NbStepSimulationTest": 64*2,
              "nbLoader": 1,
@@ -424,7 +446,7 @@ if __name__ == '__main__':
              "TempsAttenteActionInvalide": 10,
              "TempsSechageAirLibre": 7 * 24,
              "RatioSechageAirLibre": 0.1 * 12 / 52,
-             "HresProdScieriesParSem": 168, #44 + 44,
+             "HresProdScieriesParSem": sum(df_HoraireScierie[:168]["work_time"]),
              "VariationProdScierie": 0.1,  # Pourcentage de variation de la demande par rapport à la production de la scierie
              "VariationTempsSechage": 0.1,
              "VariationTempsDeplLoader": 0.1,
@@ -433,6 +455,7 @@ if __name__ == '__main__':
              "RatioSapinEpinette" : "50/50"
              }
 
+    
     # Pour faciliter le développement, on s'assure d'avoir toujours le mêmes
     # nombres aléatoires d'une exécution à l'autre
     random.seed(1)
@@ -449,6 +472,9 @@ if __name__ == '__main__':
     lstQteStable = []
     lstinf = []
     lstsup = []
+    lstUtilLoader = []
+    lstUtilSechoir = []
+    lstUtilScierie = []
     propReelle = reelle
     while not done:         
         done = env.stepSimpy(ActionValideAleatoire(env))
@@ -460,12 +486,21 @@ if __name__ == '__main__':
         lstinf.append(inf[4])
         lstsup.append(sup[4])
         env.getState()
-            
+        lstUtilScierie.append(env.getTauxUtilisationScierie())
+        lstUtilSechoir.append(env.getTauxUtilisationSechoirs())
+        lstUtilLoader.append(env.getTauxUtilisationLoader())
     
     plt.plot(lstQteDansCours)
     plt.plot(lstQteStable)
     plt.plot(lstinf)
     plt.plot(lstsup)
+    plt.show()
+    
+    plt.plot(lstUtilLoader,label="loader")
+    plt.plot(lstUtilSechoir,label="Sechoir")
+    plt.plot(lstUtilScierie,label="Scierie")
+    plt.legend()  
+    plt.show()
     
     timer_après = time.time()
     

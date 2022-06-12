@@ -17,11 +17,14 @@ from Temps import *
 if __name__ == '__main__': 
         
     regles = pd.read_csv("DATA/regle.csv")
+    df_HoraireScierie = work_schedule()
+    df_HoraireLoader = work_schedule()
+
         
     paramSimu = {"df_regles": regles,
              "df_HoraireLoader" : work_schedule(),
              "df_HoraireScierie" : work_schedule(),                
-             "NbStepSimulation": 64*1,
+             "NbStepSimulation": 64*5,
              "NbStepSimulationTest": 64*10,
              "nbLoader": 1,
              "nbSechoir1": 4,
@@ -32,7 +35,7 @@ if __name__ == '__main__':
              "TempsAttenteActionInvalide": 10,
              "TempsSechageAirLibre": 7 * 24,
              "RatioSechageAirLibre": 0.1 * 12 / 52,
-             "HresProdScieriesParSem": 168, #44 + 44,
+             "HresProdScieriesParSem": sum(df_HoraireScierie[:168]["work_time"]),
              "VariationProdScierie": 0.1,  # Pourcentage de variation de la demande par rapport à la production de la scierie
              "VariationTempsSechage": 0.1,
              "VariationTempsDeplLoader": 0.1,

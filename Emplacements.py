@@ -6,15 +6,21 @@ Created on Thu Jun  9 20:17:14 2022
 """
 
 import simpy
+from Temps import *
 
 class Emplacements(simpy.Resource) : 
-    def __init__(self,Nom,env, **kwargs):
+    def __init__(self,Nom,env,df_horaire = None, **kwargs):
         super().__init__(env, **kwargs)
         self.lstRequest = []
         self.Nom = Nom
         self.env = env
         self.PleinTotale = 0
         self.DebutPlein = -1
+        
+        if df_horaire is None :
+            self.df_horaire = work_schedule(day_start = 0, day_end = 24, work_on_weekend = True)
+        else : 
+            self.df_horaire = df_horaire       
        
     def request(self,**kwargs) :
         
@@ -23,11 +29,14 @@ class Emplacements(simpy.Resource) :
         return request
         
     def release(self,env) : 
+                        
         if self.count >= self.capacity : 
 
             env.EnrEven("Place à nouveau disponible", Destination=self.Nom)
-            self.PleinTotale += self.env.now - self.DebutPlein
-            self.DebutPlein = -1
+            
+            if self.DebutPlein != -1 : 
+                self.PleinTotale += HeuresProductives(self.df_horaire,self.DebutPlein,self.env.now)
+                self.DebutPlein = -1
         
         request = self.lstRequest.pop(0)
         super().release(request)
@@ -49,8 +58,8 @@ class Emplacements(simpy.Resource) :
         
         PleinTotal = self.PleinTotale
         if self.DebutPlein != -1 : 
-            PleinTotal += self.env.now - self.DebutPlein
-        
-        return PleinTotal / self.env.now if self.env.now > 0 else 0
+            PleinTotal += HeuresProductives(self.df_horaire,self.DebutPlein,self.env.now)
+            
+        return PleinTotal / HeuresProductives(self.df_horaire,0,self.env.now) if self.env.now > 0 else 0
         
         

@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 
-def work_schedule(nb_days = 365, day_start = 8, day_end = 24, month_start = 1):
+def work_schedule(nb_days = 365, day_start = 8, day_end = 24, month_start = 1,work_on_weekend = False):
     """
     Paramètres:
         nb_days:
@@ -22,7 +22,7 @@ def work_schedule(nb_days = 365, day_start = 8, day_end = 24, month_start = 1):
         Dataframes sur les heures de travail (0/1), journées de travail (0/1) et mois (1 à 12).
     """
     
-    columns = ["work_time", "work_day","day_of_week", "month"]
+    columns = ["work_time", "work_day", "month"]
     df= pd.DataFrame(columns = columns, index = range(nb_days * 24))
     
     # Heures de travail
@@ -33,7 +33,10 @@ def work_schedule(nb_days = 365, day_start = 8, day_end = 24, month_start = 1):
     
     # Semaine et fin de semaine
     df.work_day = np.ceil((df.index+1)/24)
-    df.work_day = np.where((df.work_day % 7 == 0) | ((df.work_day + 1) % 7 == 0), 0, 1)
+    if work_on_weekend :
+        df["work_day"] = 1
+    else : 
+        df.work_day = np.where((df.work_day % 7 == 0) | ((df.work_day + 1) % 7 == 0), 0, 1)
     df.loc[df.work_day == 0, "work_time"] = 0
     
     # Mois
@@ -63,6 +66,14 @@ def task_total_length(df, task_start, task_time):
         Durée finale de la tâche avec les arrêts de travail.
     """
     
+    # Ramener le calcul à partir de la première semaine pour être certain
+    # de ne pas défoncé l'année... Permet de réutiliser directement le code déjà 
+    # fonctionnel pour 1 an, mais pourrait être à revoir si la gestion de semaines/mois
+    # apporteraient des nuances...
+    if task_start > 7 * 24 : 
+        return task_total_length(df,task_start - int(task_start / (7*24))*(7*24),task_time)
+    
+    
     length = pd.Index(df.loc[int(task_start):, "work_time"].cumsum()).get_loc(int(task_time))
     
     # length est un slice plutôt qu'un int quand la dernière heure de travail est avant un arrêt de travail
@@ -84,32 +95,115 @@ def task_total_length(df, task_start, task_time):
     length = length + (task_time - int(task_time))
     return length
 
-def GetInfosTemps(now,month_start = 1) : 
+def GetInfosTemps(now) : 
+    """
+    Paramètres:
+        now:
+            Temps en heure (réel)
+        
+    Sortie:
+        day_of_week : jour de la semaine (1 à 7)
+        hour : heure de la journée (réel)
+    """
     
     day_of_week = ((int(now / 24)) % 7) + 1 
     hour = now % 24 
     
     return day_of_week, hour
 
+
+def HeuresProductives(df,debut,fin):
+    """
+    Paramètres:
+        df:
+            Dataframe sur les horaires de travail.
+        debut:
+            Heure de début du calcul
+        fin:
+            Fin de la tâche.
+        
+    Sortie:
+        Durée en heures (réel) de travail productive entre debut et fin
+    """
+
+    # Ramener le calcul à partir de la première semaine pour être certain
+    # de ne pas défoncé l'année... Permet de réutiliser directement le code déjà 
+    # fonctionnel pour 1 an, mais pourrait être à revoir si la gestion de semaines/mois
+    # apporteraient des nuances...
+    if debut > 7 * 24 : 
+        return HeuresProductives(df,debut - int(debut / (7*24))*(7*24),fin - int(debut / (7*24))*(7*24))
+
+    # Retirer les semaines complètes pour ne pas défoncer l'année de calcul
+    if (fin - debut) > 24 * 7 : 
+        NbHeuresUneSemaine = sum(df[:168]["work_time"])
+        NbSemainesComplètes = int((fin-debut) / (24*7))
+        NbHeuresSemainesComplètes = NbSemainesComplètes * NbHeuresUneSemaine
+        DureeSemIncomplete = HeuresProductives(df,debut,fin - NbSemainesComplètes*(7*24))
+        return NbHeuresSemainesComplètes + DureeSemIncomplete
+    
+    nbHeures = sum(df[int(debut):int(fin)]["work_time"])
+    MinutesDebut = (debut - int(debut)) * df.iloc[int(debut)]["work_time"]
+    MinutesFin = (fin - int(fin)) * df.iloc[int(fin)]["work_time"]
+    
+    return nbHeures - MinutesDebut + MinutesFin 
     
 
 if __name__ == "__main__":
-    df = work_schedule(nb_days = 365, day_start = 8, day_end = 24, month_start = 1)
+    
+    
+    df = work_schedule(nb_days = 365, day_start = 0, day_end = 24, month_start = 1,work_on_weekend=True)
     task_length = task_total_length(df, task_start = 360*24, task_time = 23)
-    print(task_length)
+    #print(task_length)
     
-    if 1 == 0 : 
+    if 1 ==0 : 
+        # Pour faciliter le développement, on s'assure d'avoir toujours le mêmes
+        # nombres aléatoires d'une exécution à l'autre
+        import random
+        random.seed(1)
+        
         now = 0
-        for jour in range(1,50) : 
-            #for heure in range(24) : 
+        for jour in range(1,5000) : 
+            print(jour)
+            for heure in range(1) : 
+                for minutes in range(1) : 
+                    task_start = jour*24 + heure + minutes/60
+                    task_time = random.random() * 1500 + 1
+                    
+                    #bk = task_total_length_bk(df, task_start = jour*24 + heure + minutes/60, task_time = 50)
+                    new = task_total_length(df, task_start = task_start, task_time = task_time)
+                    end = new + task_start
+                    
+                    prod = HeuresProductives(df,task_start,end)
+                    
+                    
+                    if round(prod,4) != round(task_time,4) : 
+                        #print("PROBLÈME", task_start, task_time, new,prod)
+                        #   task_start = jour*24 + heure + minutes/60
+                        
+                      #  task_time = 50
+                        
+                       # print(jour,heure,minutes,"PROBLÈME")
+                       # print(bk)
+                       # print(new)
+                        print("task start", task_start, "task time", task_time)
+                        print("new",new)
+                        print("prod",prod)
+                        print("end",end)
+                       # print(task_start - int(task_start / (7*24))*(7*24))
+                        exit
+                              
+        print("FINI")                    
             #    print(now, jour, heure)
-            print("now : ", now,"jour : ",  jour)
+            #print("now : ", now,"jour : ",  jour)
                     
-            month, day_of_week, hour = GetInfosTemps(now)
+            #month, day_of_week, hour = GetInfosTemps(now)
                     
-            print(day_of_week)
-            print()
+            #print(day_of_week)
+            #print()
                     
-            now += 1 * 24
-    
-    #print(GetInfosTemps(23.98+(24*6)))
+            #now += 1 * 24
+    debut = 189.17756324661573 
+    fin = 232.8203783310047
+    print("Calculer",HeuresProductives(df,debut,fin))
+    print("Bon 24/7", fin-debut)
+    print(GetInfosTemps(debut))
