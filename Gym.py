@@ -4,14 +4,15 @@ import pandas as pd
 import numpy as np
 import gym
 from gym import spaces
-from EnvSimpy import *
 import matplotlib.pyplot as plt
 import os
 import time
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
-from utils import *
 from Heuristiques import *
+from EnvSimpy import EnvSimpy
+from stable_baselines3.common.callbacks import BaseCallback
+
 
 class EnvGym(gym.Env) : 
     
@@ -92,7 +93,7 @@ class EnvGym(gym.Env) :
         
         return self.state, self.reward, self.done, self.info
     
-    def plot_progression_reward(self):            
+    def plot_progression_reward(self) -> None:            
         # Afficher la progression du reward dans la simulation
         df_rewards = pd.DataFrame(self.rewards, columns=["time", "reward"])    
         plt.plot(df_rewards["time"], df_rewards["reward"], label="reward", color="red")
@@ -100,7 +101,7 @@ class EnvGym(gym.Env) :
         plt.legend()    
         plt.show()   
         
-    def plot_inds_inventaires(self):
+    def plot_inds_inventaires(self) -> None:
         # Afficher les indicateurs d'inventaire 
         nb_type_produit = get_action_space(self.env.paramSimu)
         qte_dans_cours = [f"quantite_reelle{x}" for x in range(nb_type_produit)]
@@ -117,7 +118,7 @@ class EnvGym(gym.Env) :
             plt.legend()
             plt.show()
             
-    def plot_taux_utilisations(self):
+    def plot_taux_utilisations(self) -> None:
         # Afficher les indicateurs de taux d'utilisation
         df_taux_utilisation = pd.DataFrame(self.taux_utilisations, columns=["time", "taux_utilisation_loader", "taux_utilisation_scierie",
                                                                             "taux_utilisation_séchoir", "taux_remplissage_cours"])
@@ -127,7 +128,7 @@ class EnvGym(gym.Env) :
         plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_remplissage_cours"], label="utilisation de la cours au temps t", color="yellow")
         plt.legend()
         plt.show()
-        
+    
     def train_model(self, model: PPO, nb_episode: int, save: bool=False, evaluate_every: int = 20, logs_dir: str = "") -> None:
         if logs_dir != "":
             os.makedirs(logs_dir, exist_ok=True)

@@ -11,8 +11,8 @@ import pandas as pd
 import numpy as np
 import time
 from Gym import *
-from utils import *
 from Temps import *
+from utils import *
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 if __name__ == '__main__': 
@@ -63,6 +63,7 @@ if __name__ == '__main__':
     
     #Tests
     # envRL5050.solve_w_heuristique("pile_la_plus_elevee")
+    train_model(vec_env, model, nb_episode=2)
     
     print(f"Temps d'exécution : {time.time()-timer_avant:.2f}")
     
