@@ -325,11 +325,11 @@ def Sciage(env,npUneRegle) :
     tempsSechage = float(npUneRegle[env.cRegle["temps sechage"]])
     
     # Ramener le temps nécessaire pour le produit en heure pour utilisation par le yield plus tard
-    if paramSimu["RatioSapinEpinette"] == "50/50" : 
+    if env.paramSimu["RatioSapinEpinette"] == "50/50" : 
         prodMoyPMPSem = max(0,float(npUneRegle[env.cRegle["production mixte"]])) * env.paramSimu["FacteurSortieScierie"]
-    elif paramSimu["RatioSapinEpinette"] == "75/25" : 
+    elif env.paramSimu["RatioSapinEpinette"] == "75/25" : 
         prodMoyPMPSem = max(0,float(npUneRegle[env.cRegle["production epinette"]])) * env.paramSimu["FacteurSortieScierie"]
-    elif paramSimu["RatioSapinEpinette"] == "25/75" : 
+    elif env.paramSimu["RatioSapinEpinette"] == "25/75" : 
             prodMoyPMPSem = max(0,float(npUneRegle[env.cRegle["production sapin"]])) * env.paramSimu["FacteurSortieScierie"]
     
     prodMoyPMPHr = prodMoyPMPSem / env.paramSimu["HresProdScieriesParSem"]

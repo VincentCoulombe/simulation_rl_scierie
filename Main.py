@@ -12,12 +12,15 @@ import numpy as np
 import time
 from Gym import *
 from utils import *
+from Temps import *
 
 if __name__ == '__main__': 
         
     regles = pd.read_csv("DATA/regle.csv")
         
     paramSimu = {"df_regles": regles,
+             "df_HoraireLoader" : work_schedule(),
+             "df_HoraireScierie" : work_schedule(),                
              "NbStepSimulation": 64*1,
              "NbStepSimulationTest": 64*10,
              "nbLoader": 1,

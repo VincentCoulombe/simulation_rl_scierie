@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 
-def work_schedule(nb_days = 365 * 7, day_start = 8, day_end = 24, month_start = 1):
+def work_schedule(nb_days = 365, day_start = 8, day_end = 24, month_start = 1):
     """
     Paramètres:
         nb_days:
@@ -95,7 +95,7 @@ def GetInfosTemps(now,month_start = 1) :
 
 if __name__ == "__main__":
     df = work_schedule(nb_days = 365, day_start = 8, day_end = 24, month_start = 1)
-    task_length = task_total_length(df, task_start = 0, task_time = 23)
+    task_length = task_total_length(df, task_start = 360*24, task_time = 23)
     print(task_length)
     
     if 1 == 0 : 
