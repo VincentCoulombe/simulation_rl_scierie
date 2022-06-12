@@ -12,6 +12,7 @@ import numpy as np
 from Loader import *
 from Emplacements import *
 from utils import *
+from Temps import *
 
 ############### Done
 # prendre en compte dernier fichier Francis pour temsp chargement
@@ -25,12 +26,11 @@ from utils import *
 # paramètre pour nuancer la sortie de la scierie 
 # gestion tannante numpy (1ère ligne et string)
 # récupération du main (les paramSimu)
-# donner numéro de téléphone
+# prendre en compte les différentes planification de production (mixte, épinette, sapin)
 
 ############### Idées, mais à voir si on va le faire
 # Inclure du séchage à l'air libre (voir procédure SechageAirLibre déjà commencée)
 # Pour l'instant envoi dans le premier séchoir qui a de la place si plusieurs libres... pourrait remplir le rail devant mauvais séchoir...
-# prendre en compte les différentes planification de production (mixte, épinette, sapin)
 # passage par la cours
 # gérer temps attente loader pour prochain événement au lieu d'attendre 1 heure s'il n'a rien à faire...
 # aléatoire selon les quantités de chaque produits dans la cours au lieu de juste choisir une règle (éviterait de toujours vider les règles)
@@ -49,9 +49,21 @@ class EnvSimpy(simpy.Environment):
         # Initialisation des attributs avec valeur hardcoder
         self.nbStep = 0
         self.RewardActionInvalide = False
-        self.PropEpinettesSortieSciage = 0.5
         self.DernierCharg = 0
+        self.df_HoraireLoader = paramSimu["df_HoraireLoader"]
+        self.df_HoraireScierie = paramSimu["df_HoraireScierie"]
         
+        # Gestion de la proportion Sapin/Épinette
+        if paramSimu["RatioSapinEpinette"] == "50/50" : 
+            self.PropEpinettesSortieSciage = 0.5
+        elif paramSimu["RatioSapinEpinette"] == "75/25" : 
+            self.PropEpinettesSortieSciage = 0.25
+        elif paramSimu["RatioSapinEpinette"] == "25/75" : 
+            self.PropEpinettesSortieSciage = 0.75
+        else :
+            print("Paramètre RatioSapinEpinette invalide.  Attend 25/75, 50/50 ou 75/25.")
+            exit
+                
         # Initialisation des attributs provenant de paramètres
         self.np_regles = paramSimu["df_regles"]        
         self.paramSimu = paramSimu
@@ -301,7 +313,7 @@ class EnvSimpy(simpy.Environment):
         return TempsComplet / NbSechoirs
     
     def getTauxRemplissageCours(self):
-        return self.lesEmplacements["Sortie sciage"].count() / self.paramSimu["CapaciteSortieSciage"]
+        return self.lesEmplacements["Sortie sciage"].count / self.paramSimu["CapaciteSortieSciage"]
 
 # Lance les différents sciages selon le rythme prédéterminé dans les règles
 def Sciage(env,npUneRegle) :
@@ -313,13 +325,20 @@ def Sciage(env,npUneRegle) :
     tempsSechage = float(npUneRegle[env.cRegle["temps sechage"]])
     
     # Ramener le temps nécessaire pour le produit en heure pour utilisation par le yield plus tard
-    prodMoyPMPSem = max(0,float(npUneRegle[env.cRegle["production mixte"]])) * env.paramSimu["FacteurSortieScierie"]
-    prodMoyPMPHr = prodMoyPMPSem / env.paramSimu["HresProdScieriesParSem"]
-    dureeMoyCharg = volumeSechoir1 / prodMoyPMPHr
-    dureeMinCharg = dureeMoyCharg * (1-env.paramSimu["VariationProdScierie"])
-    dureeMaxCharg = dureeMoyCharg * (1+env.paramSimu["VariationProdScierie"])   
+    if paramSimu["RatioSapinEpinette"] == "50/50" : 
+        prodMoyPMPSem = max(0,float(npUneRegle[env.cRegle["production mixte"]])) * env.paramSimu["FacteurSortieScierie"]
+    elif paramSimu["RatioSapinEpinette"] == "75/25" : 
+        prodMoyPMPSem = max(0,float(npUneRegle[env.cRegle["production epinette"]])) * env.paramSimu["FacteurSortieScierie"]
+    elif paramSimu["RatioSapinEpinette"] == "25/75" : 
+            prodMoyPMPSem = max(0,float(npUneRegle[env.cRegle["production sapin"]])) * env.paramSimu["FacteurSortieScierie"]
     
-    while True :
+    prodMoyPMPHr = prodMoyPMPSem / env.paramSimu["HresProdScieriesParSem"]
+    if prodMoyPMPHr > 0 : 
+        dureeMoyCharg = volumeSechoir1 / prodMoyPMPHr
+        dureeMinCharg = dureeMoyCharg * (1-env.paramSimu["VariationProdScierie"])
+        dureeMaxCharg = dureeMoyCharg * (1+env.paramSimu["VariationProdScierie"])   
+    
+    while prodMoyPMPHr > 0 :
 
         # Temps inter-sortie du sciage
         yield env.timeout(random.triangular(dureeMinCharg,dureeMaxCharg,dureeMoyCharg)) 
@@ -392,6 +411,8 @@ if __name__ == '__main__':
     regles = pd.read_csv("DATA/regle.csv")
         
     paramSimu = {"df_regles": regles,
+             "df_HoraireLoader" : work_schedule(),
+             "df_HoraireScierie" : work_schedule(),
              "NbStepSimulation": 64*5,
              "NbStepSimulationTest": 64*2,
              "nbLoader": 1,
@@ -408,7 +429,8 @@ if __name__ == '__main__':
              "VariationTempsSechage": 0.1,
              "VariationTempsDeplLoader": 0.1,
              "FacteurSortieScierie" : 1, # Permet de sortir plus ou moins de la scierie (1 correspond à sortir exactement ce qui est prévu)
-             "ObjectifStableEnPMP" : 215000 * 4 * 2.5
+             "ObjectifStableEnPMP" : 215000 * 4 * 2.5,
+             "RatioSapinEpinette" : "50/50"
              }
 
     # Pour faciliter le développement, on s'assure d'avoir toujours le mêmes
@@ -453,7 +475,7 @@ if __name__ == '__main__':
     regles = env.np_regles
 
     #print(propVoulu)
-    #print(propReelle)
+    print(propReelle)
     print("Temps d'exécution : ", timer_après-timer_avant)
     #print("Durée en h/j/an de la simulation : ", env.now, env.now/ 24, env.now/24/365)
     
