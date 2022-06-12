@@ -11,6 +11,7 @@ import time
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 from utils import *
+from Heuristiques import *
 
 class EnvGym(gym.Env) : 
     
@@ -24,14 +25,16 @@ class EnvGym(gym.Env) :
         self.observation_space = spaces.Box(low=self.low, high=self.high, dtype=np.float32)
         self.simu_counter = 0  
         self.rewards_moyens = []
-        self.hyperparams = hyperparams        
+        self.hyperparams = hyperparams 
+               
     def _update_observation(self) -> None:
         
         self.state = self.env.getState() #Méthode de la simulation, state normalisé
         self.taux_utilisations.append([self.env.now, 
                                        self.env.getTauxUtilisationLoader(), 
                                        self.env.getTauxUtilisationScierie(), 
-                                       self.env.getTauxUtilisationSechoirs()])
+                                       self.env.getTauxUtilisationSechoirs(),
+                                       self.env.getTauxRemplissageCours()])
     
     def _update_reward(self) -> None:
         
@@ -88,6 +91,42 @@ class EnvGym(gym.Env) :
         
         return self.state, self.reward, self.done, self.info
     
+    def plot_progression_reward(self):            
+        # Afficher la progression du reward dans la simulation
+        df_rewards = pd.DataFrame(self.rewards, columns=["time", "reward"])    
+        plt.plot(df_rewards["time"], df_rewards["reward"], label="reward", color="red")
+        plt.title("Reward en fonction du Temps")    
+        plt.legend()    
+        plt.show()   
+        
+    def plot_inds_inventaires(self):
+        # Afficher les indicateurs d'inventaire 
+        nb_type_produit = get_action_space(self.env.paramSimu)
+        qte_dans_cours = [f"quantite_reelle{x}" for x in range(nb_type_produit)]
+        obj_qte_total = [f"quantite_voulue{x}" for x in range(nb_type_produit)]
+        obj_proportion_inf = [f"proportion_voulue_min{x}" for x in range(nb_type_produit)]
+        obj_proportion_sup = [f"proportion_voulue_max{x}" for x in range(nb_type_produit)]
+        df_inds_inv = pd.DataFrame(self.inds_inventaires, columns=["time", *qte_dans_cours, *obj_qte_total, *obj_proportion_inf, *obj_proportion_sup])  
+        for i in range(nb_type_produit):
+            plt.plot(df_inds_inv[f"quantite_reelle{i}"], label="quantitée réelle", color="blue")
+            plt.plot(df_inds_inv[f"quantite_voulue{i}"], label="quantitée voulue", color="red")
+            plt.plot(df_inds_inv[f"proportion_voulue_min{i}"], label="proportion voulue min", color="green")
+            plt.plot(df_inds_inv[f"proportion_voulue_max{i}"], label="proportion voulue max", color="green")
+            plt.title(f"Chargement de type : {i}")
+            plt.legend()
+            plt.show()
+            
+    def plot_taux_utilisations(self):
+        # Afficher les indicateurs de taux d'utilisation
+        df_taux_utilisation = pd.DataFrame(self.taux_utilisations, columns=["time", "taux_utilisation_loader", "taux_utilisation_scierie",
+                                                                            "taux_utilisation_séchoir", "taux_remplissage_cours"])
+        plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_utilisation_loader"], label="taux utilisation loader", color="blue")
+        plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_utilisation_scierie"], label="taux utilisation scierie", color="green")
+        plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_utilisation_séchoir"], label="taux utilisation séchoir", color="red")
+        plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_remplissage_cours"], label=" niveau d'utilisation de la cours", color="yellow")
+        plt.legend()
+        plt.show()
+        
     def train_model(self, model: PPO, nb_episode: int, save: bool=False, evaluate_every: int = 20):
         logs_dir = f"logs/logs_{int(time.time())}/"
         os.makedirs(logs_dir, exist_ok=True)
@@ -116,39 +155,18 @@ class EnvGym(gym.Env) :
             action, _ = model.predict(obs)
             obs, _, done, _ = self.step(action)
             
-        # Afficher la progression du reward dans la simulation
-        df_rewards = pd.DataFrame(self.rewards, columns=["time", "reward"])    
-        plt.plot(df_rewards["time"], df_rewards["reward"], label="reward", color="red")
-        plt.title("Reward en fonction du Temps")    
-        plt.legend()    
-        plt.show()   
-        
-        # Afficher les indicateurs d'inventaire 
-        nb_type_produit = get_action_space(self.env.paramSimu)
-        qte_dans_cours = [f"quantite_reelle{x}" for x in range(nb_type_produit)]
-        obj_qte_total = [f"quantite_voulue{x}" for x in range(nb_type_produit)]
-        obj_proportion_inf = [f"proportion_voulue_min{x}" for x in range(nb_type_produit)]
-        obj_proportion_sup = [f"proportion_voulue_max{x}" for x in range(nb_type_produit)]
-        df_inds_inv = pd.DataFrame(self.inds_inventaires, columns=["time", *qte_dans_cours, *obj_qte_total, *obj_proportion_inf, *obj_proportion_sup])  
-        for i in range(nb_type_produit):
-            plt.plot(df_inds_inv[f"quantite_reelle{i}"], label="quantitée réelle", color="blue")
-            plt.plot(df_inds_inv[f"quantite_voulue{i}"], label="quantitée voulue", color="red")
-            plt.plot(df_inds_inv[f"proportion_voulue_min{i}"], label="proportion voulue min", color="green")
-            plt.plot(df_inds_inv[f"proportion_voulue_max{i}"], label="proportion voulue max", color="green")
-            plt.title(f"Chargement de type : {i}")
-            plt.legend()
-            plt.show()
-            
-        # Afficher les indicateurs de taux d'utilisation
-        df_taux_utilisation = pd.DataFrame(self.taux_utilisations, columns=["time", "taux_utilisation_loader", "taux_utilisation_scierie", "taux_utilisation_séchoir"])
-        plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_utilisation_loader"], label="taux utilisation loader", color="blue")
-        plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_utilisation_scierie"], label="taux utilisation scierie", color="green")
-        plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_utilisation_séchoir"], label="taux utilisation séchoir", color="red")
-        plt.legend()
-        plt.show()
-            
+        self.plot_inds_inventaires()
+        self.plot_taux_utilisations()
+        self.plot_progression_reward()
         print(f"Moyenne Reward : {self.get_avg_reward():.2f}")
-        
+            
     def solve_w_heuristique(self, heuristique: str = "Aléatoire"):
-        pass
-        #TODO Heuristique dans heuristique.py prendre le produit réel le plus dans le champs au temps t
+        _ = self.reset(test=True)  
+        done = False  
+        while not done: 
+            if heuristique == "pile_la_plus_elevee":
+                action = pile_la_plus_elevee(self.env)
+            _, _, done, _ = self.step(action)      
+        self.plot_inds_inventaires()
+        self.plot_taux_utilisations()
+        self.plot_progression_reward()    
