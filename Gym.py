@@ -80,7 +80,8 @@ class EnvGym(gym.Env) :
         self.step_counter += 1
         total_steps = self.env.paramSimu["NbStepSimulation"]
         if verbose and self.step_counter in [round(0.25*total_steps), round(0.5*total_steps), round(0.75*total_steps)]:
-            print(f"Step {self.step_counter}/{total_steps} terminé. Reward : {self.reward:.2f}")
+            env_name = self.env.paramSimu["RatioSapinEpinette"]
+            print(f"Environnement : {env_name} | Step : {self.step_counter}/{total_steps} | Reward : {self.reward:.2f}")
         if self.done:
             self.simu_counter += 1
             print(f"Simulation {self.simu_counter} terminée.")
@@ -123,7 +124,7 @@ class EnvGym(gym.Env) :
         plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_utilisation_loader"], label="taux utilisation loader", color="blue")
         plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_utilisation_scierie"], label="taux utilisation scierie", color="green")
         plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_utilisation_séchoir"], label="taux utilisation séchoir", color="red")
-        plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_remplissage_cours"], label=" niveau d'utilisation de la cours", color="yellow")
+        plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_remplissage_cours"], label="utilisation de la cours au temps t", color="yellow")
         plt.legend()
         plt.show()
         
@@ -169,4 +170,3 @@ class EnvGym(gym.Env) :
             _, _, done, _ = self.step(action)      
         self.plot_inds_inventaires()
         self.plot_taux_utilisations()
-        self.plot_progression_reward()    
