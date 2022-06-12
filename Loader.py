@@ -12,19 +12,6 @@ import numpy as np
 import EnvSimpy
 from Temps import *
 
-
-def ActionValideAleatoire(env) :
-    
-    if not env.sourceDisponible() or not env.destinationDisponible() :
-        return -1, -1
-    
-    charg = -1
-    while charg == -1 :
-        action = random.randint(0,(len(env.paramSimu["df_regles"])-1))        
-        charg = env.LienActionCharg[action]
-            
-    return action
-
         
 class Loader() : 
     def __init__(self,NomLoader,env):
@@ -58,12 +45,8 @@ class Loader() :
                 self.env.RewardActionInvalide = True
                 duree = self.env.paramSimu["TempsAttenteActionInvalide"]
                         
-        # Trouver un séchoir de libre, si plusieurs séchoir, prendre le premier tout simplement
-        destination = "Attente"
-        for key in self.env.lesEmplacements.keys() : 
-            if "Préparation séchoir" in key :
-                if not self.env.lesEmplacements[key].EstPlein() :
-                    destination = self.env.lesEmplacements[key].Nom
+        # Trouver un séchoir de libre
+        destination, _ = self.env.GetDestinationCourante()
                                 
         # On doit attendre, effectuer cette attente.  Mettre un message dans les événements seulement la
         # première fois s'il y a des attentes successives

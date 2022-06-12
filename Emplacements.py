@@ -16,12 +16,22 @@ class Emplacements(simpy.Resource) :
         self.env = env
         self.PleinTotale = 0
         self.DebutPlein = -1
+        self.HeureFinPrevue = 0
         
         if df_horaire is None :
             self.df_horaire = work_schedule(day_start = 0, day_end = 24, work_on_weekend = True)
         else : 
             self.df_horaire = df_horaire       
        
+    def SetHeureFinPrevue(self,Debut, DureePrevue) : 
+        self.HeureFinPrevue = Debut + DureePrevue
+        
+    def GetDureeRestante(self):
+        if self.HeureFinPrevue > 0 : 
+            return self.HeureFinPrevue - self.env.now
+        else:
+            return 0
+        
     def request(self,**kwargs) :
         
         request = super().request(**kwargs)
@@ -30,6 +40,7 @@ class Emplacements(simpy.Resource) :
         
     def release(self,env) : 
                         
+        self.HeureFinPrevue = 0
         if self.count >= self.capacity : 
 
             env.EnrEven("Place à nouveau disponible", Destination=self.Nom)

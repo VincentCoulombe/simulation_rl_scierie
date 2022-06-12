@@ -72,7 +72,7 @@ class EnvSimpy(simpy.Environment):
         
         # Création des numpy pour conserver tout le calendrier d'événements ainsi que chaque chargement produit
         self.Evenements = np.asarray([["Temps","Événement","Loader","Source", "Destination","Charg","description"]],dtype='U50')
-        self.npCharg = np.array([["Temps","Charg","regle","description","essence","Emplacement","temps sechage"]],dtype='U50')
+        self.npCharg = np.array([["Temps","Charg","regle","description","essence","Emplacement","temps sechage","Est deteriorer ?"]],dtype='U50')
                 
         
         # Dictionnaires permettant de se rendre indépendant des numéros de colonnes malgré qu'on soit 
@@ -83,7 +83,8 @@ class EnvSimpy(simpy.Environment):
                       "description" : 3,
                       "essence" : 4,
                       "Emplacement" : 5,
-                      "temps sechage" : 6}
+                      "temps sechage" : 6,
+                      "Est deteriorer ?" : 7}
         
         # Transférer le pandas dans un numpy en conservant le nom des colonnes comme première ligne
         # pour faciliter le débuggage.  Un dictionnaire permettant de se rendre indépendant des numéros 
@@ -170,6 +171,24 @@ class EnvSimpy(simpy.Environment):
                 minNom = key
         
         return self.lesLoader[minNom], minTemps
+
+    # Trouver un séchoir de libre, si plusieurs séchoir, prendre lui qui devrait se libérer en premier
+    def GetDestinationCourante(self) : 
+        
+        destination = "Attente"
+        TempsSechageMin = 9999999999
+        destinationMin = destination
+        for key in self.lesEmplacements.keys() : 
+            if "Préparation séchoir" in key :
+                if not self.lesEmplacements[key].EstPlein() :
+                    destination = self.lesEmplacements[key].Nom
+                    NomSechoir = "Séchoir" + destination[len("Préparation séchoir"):]
+                    dureeRestante = self.lesEmplacements[NomSechoir].GetDureeRestante()
+                    if dureeRestante < TempsSechageMin : 
+                        destinationMin = destination
+                        TempsSechageMin = dureeRestante
+                        
+        return destination, TempsSechageMin
 
     # Retourne si au moins une destination est disponible ou non
     def destinationDisponible(self) : 
@@ -259,6 +278,14 @@ class EnvSimpy(simpy.Environment):
         self.QteDansCours = count
         self.proportionReelle = count / max(1,sum(count))
                 
+        # Quantité dans la cours de chaque produit qu'on est entrain de perdre en s'assurant d'avoir le produit dans la liste même si la quantité est à 0
+        Charg = np.concatenate((self.np_regles[1:,self.cRegle["regle"]],
+                                self.npCharg[(self.npCharg[:,self.cCharg["Emplacement"]] == "Sortie sciage") & (self.npCharg[:,self.cCharg["Est deteriorer ?"]] == "OUI"),self.cCharg["regle"]]))
+                                #self.npCharg[(self.npCharg[:,self.cCharg["Emplacement"]] == "Sortie sciage") & (self.npCharg[:,self.cCharg["essence"]] == "SAPIN") & (self.npCharg[:,self.cCharg["Temps"]] <= str(self.now - self.paramSimu["DureeDeteriorationSapin"])),self.cCharg["regle"]]))
+        unique,count = np.unique(Charg.astype(int),return_counts = True)        
+        count = (count-1)
+        self.QteCoursDeteriorer = count
+        
         # Proportions qu'on veut avoir dans la cours
         self.proportionVoulu = self.np_regles[1:,self.cRegle["proportion 50/50"]].astype(float)
         
@@ -280,7 +307,7 @@ class EnvSimpy(simpy.Environment):
 
     def getIndicateursInventaire(self) : 
         
-        return self.QteDansCours, self.ObjectifStable, self.ObjectifDynamiqueInf, self.ObjectifDynamiqueSup
+        return self.QteDansCours, self.ObjectifStable, self.ObjectifDynamiqueInf, self.ObjectifDynamiqueSup, self.QteCoursDeteriorer
 
     # Retourne le State à l'agent.  Celui-ci devrait être déjà prêt par les mises à jours lancées dans updateApresStep
     def getState(self) : 
@@ -296,8 +323,12 @@ class EnvSimpy(simpy.Environment):
         day_of_week, hour = GetInfosTemps(self.now)
         day_of_week = min_max_scaling(day_of_week,1,7)
         hour = min_max_scaling(hour,0,24)
+        
+        # Temps restant au séchoir où l'on veut amener du stock
+        _, TempsRestantSechoir = self.GetDestinationCourante()
+        TempsRestantSechoir = min_max_scaling(TempsRestantSechoir,-100,100)
 
-        return np.concatenate(([self.PropEpinettesSortieSciage],QteDansCours,[day_of_week,hour]))
+        return np.concatenate(([self.PropEpinettesSortieSciage],QteDansCours,[day_of_week,hour],[TempsRestantSechoir]))
     
     # Retourne la quantité totale séchée et sciée pour chaque produits depuis le début de la simulation
     def getQteTotale(self) :     
@@ -322,10 +353,7 @@ class EnvSimpy(simpy.Environment):
             if self.lesLoader[key].bAttente :
                 
                 AttenteTotale += HeuresProductives(self.df_HoraireLoader,max(self.DebutRegimePermanent,self.lesLoader[key].debutAttente),self.now)
-                
-        #print(self.now,self.DebutRegimePermanent,AttenteTotale,HeuresProductives(self.df_HoraireLoader,self.DebutRegimePermanent,self.now))
-        #exit
-                
+                                
         return 1 - (AttenteTotale / self.paramSimu["nbLoader"] / HeuresProductives(self.df_HoraireLoader,self.DebutRegimePermanent,self.now)) if HeuresProductives(self.df_HoraireLoader,self.DebutRegimePermanent,self.now)>0 else 0
 
     # Retourne le taux d'utilisation de la scierie.  Le calcul tient compte de toutes les attentes
@@ -350,6 +378,11 @@ class EnvSimpy(simpy.Environment):
     
     def getTauxRemplissageCours(self):
         return self.lesEmplacements["Sortie sciage"].count / self.paramSimu["CapaciteSortieSciage"]
+
+    def getTauxCoursBonEtat(self):
+        
+        return 1 - (sum(self.QteCoursDeteriorer) / max(1,sum(self.QteDansCours)))
+
 
 # Lance les différents sciages selon le rythme prédéterminé dans les règles
 def Sciage(env,npUneRegle) :
@@ -397,12 +430,13 @@ def Sciage(env,npUneRegle) :
         # On sort la quantité de la scierie       
         env.DernierCharg += 1
         emplacement = "Sortie sciage"
-        nouveaunp = np.asarray([[env.now,env.DernierCharg,produit,description,essence, emplacement,tempsSechage]],dtype='U50')
+        nouveaunp = np.asarray([[env.now,env.DernierCharg,produit,description,essence, emplacement,tempsSechage,"NON"]],dtype='U50')
         env.npCharg = np.vstack((env.npCharg,nouveaunp))
         env.EnrEven("Sortie sciage",Charg = env.DernierCharg)
         
         # Procédé au séchage à l'air libre
         env.process(SechageAirLibre(env,env.DernierCharg))
+        env.process(Deterioration(env,env.DernierCharg))
                 
         env.lesEmplacements["Sortie sciage"].LogCapacite()
 
@@ -420,6 +454,7 @@ def Sechage(env,charg,NomPrepSechage) :
     yield env.lesEmplacements[NomSechoir].request()   
     env.EnrEven("Début séchage",Charg = charg, Destination = NomSechoir)
     env.lesEmplacements[NomSechoir].LogCapacite()
+    env.lesEmplacements[NomSechoir].SetHeureFinPrevue(env.now,tempsSechage)
     yield env.timeout(random.triangular(tempsMin,tempsMax,tempsSechage))
     
     # Le séchage est terminé, libérer le séchoir pour pouvoir faire entrer un autre wagon
@@ -445,8 +480,6 @@ def Sechage(env,charg,NomPrepSechage) :
 # qui fait la mise à jour est en commentaire pour s'assurer que si on en tiens compte, on le fait comme 
 # il faut.
 def SechageAirLibre(env,charg): 
-       
-    return
     
     TempsInitial = float(env.npCharg[charg][env.cCharg["temps sechage"]])
     TempsMin = TempsInitial * (1-env.paramSimu["MaxSechageAirLibre"])
@@ -460,6 +493,23 @@ def SechageAirLibre(env,charg):
         
         if tempsReduit < TempsMin : 
             return
+
+def Deterioration(env,charg) : 
+    
+    essence = env.npCharg[charg][env.cCharg["essence"]]
+    
+    if essence == "EPINETTE" : 
+        TempsAvantDeterioration = env.paramSimu["DureeDeteriorationEpinette"]
+    else :
+        TempsAvantDeterioration = env.paramSimu["DureeDeteriorationSapin"]
+
+    tempsMin = TempsAvantDeterioration * (1-env.paramSimu["VariationTempsSechage"])
+    tempsMax = TempsAvantDeterioration * (1+env.paramSimu["VariationTempsSechage"])  
+
+    yield env.timeout(random.triangular(tempsMin,tempsMax,TempsAvantDeterioration))
+
+    if env.npCharg[charg][env.cCharg["Emplacement"]] == "Sortie sciage" : 
+        env.npCharg[charg][env.cCharg["Est deteriorer ?"]] = "OUI"
 
 if __name__ == '__main__': 
        
@@ -485,11 +535,13 @@ if __name__ == '__main__':
              "TempsSechageAirLibre": 7 * 24,
              "RatioSechageAirLibre": 0.1 * 12 / 52,
              "MaxSechageAirLibre" : 30/100,
+             "DureeDeteriorationEpinette" : 30 * 24, 
+             "DureeDeteriorationSapin" : 4 * 30 * 24, 
              "HresProdScieriesParSem": sum(df_HoraireScierie[:168]["work_time"]),
              "VariationProdScierie": 0.1,  # Pourcentage de variation de la demande par rapport à la production de la scierie
              "VariationTempsSechage": 0.1,
              "VariationTempsDeplLoader": 0.1,
-             "FacteurSortieScierie" : 1, # Permet de sortir plus ou moins de la scierie (1 correspond à sortir exactement ce qui est prévu)
+             "FacteurSortieScierie" : 0.5, # Permet de sortir plus ou moins de la scierie (1 correspond à sortir exactement ce qui est prévu)
              "ObjectifStableEnPMP" : 215000 * 4 * 2.5,
              "RatioSapinEpinette" : "50/50"
              }
@@ -514,12 +566,14 @@ if __name__ == '__main__':
     lstUtilLoader = []
     lstUtilSechoir = []
     lstUtilScierie = []
+    lstBonEtat = []
+    lstCours = []
     propReelle = reelle
     while not done:         
-        done = env.stepSimpy(pile_la_plus_elevee(env)) #ActionValideAleatoire(env))
+        done = env.stepSimpy(aleatoire(env))
         _, reelle = env.getProportions()
         propReelle += reelle
-        QteDansCours, QteStable, inf, sup = env.getIndicateursInventaire()
+        QteDansCours, QteStable, inf, sup, _ = env.getIndicateursInventaire()
         lstQteDansCours.append(QteDansCours[4])
         lstQteStable.append(QteStable[4])
         lstinf.append(inf[4])
@@ -527,6 +581,8 @@ if __name__ == '__main__':
         lstUtilScierie.append(env.getTauxUtilisationScierie())
         lstUtilSechoir.append(env.getTauxUtilisationSechoirs())
         lstUtilLoader.append(env.getTauxUtilisationLoader())
+        lstBonEtat.append(env.getTauxCoursBonEtat())
+        lstCours.append(env.getTauxRemplissageCours())
     
     plt.plot(lstQteDansCours)
     plt.plot(lstQteStable)
@@ -537,6 +593,8 @@ if __name__ == '__main__':
     plt.plot(lstUtilLoader,label="loader")
     plt.plot(lstUtilSechoir,label="Sechoir")
     plt.plot(lstUtilScierie,label="Scierie")
+    plt.plot(lstBonEtat,label="Bon état")
+    plt.plot(lstCours,label="Cours")
     plt.legend()  
     plt.show()
     

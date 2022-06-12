@@ -1,18 +1,31 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import random
 
 
 def pile_la_plus_elevee(env):
-    qte_dans_cours, _, obj_proportion_inf, _ = env.getIndicateursInventaire()
+    qte_dans_cours, _, obj_proportion_inf, _, _ = env.getIndicateursInventaire()
     return np.argmax(qte_dans_cours-obj_proportion_inf)
     
 def aleatoire(env):
     #Mettre une action aléatoire valide
-    pass
+
+    if not env.sourceDisponible() or not env.destinationDisponible() :
+        return -1, -1
+    
+    charg = -1
+    while charg == -1 :
+        action = random.randint(0,(len(env.paramSimu["df_regles"])-1))        
+        charg = env.LienActionCharg[action]
+            
+    return action    
+
 
 def gestion_horaire_et_pile(env):
     # Sécher pile la plus haute + gérer le vendredi
+    
+    # GetDestinationCourante : permettra de connaître le temps prévu restant au séchage en cours
     pass
     
 if __name__ == '__main__':
