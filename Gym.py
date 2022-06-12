@@ -138,7 +138,6 @@ class EnvGym(gym.Env) :
             os.makedirs(models_dir, exist_ok=True)
 
         for i in range(nb_episode):
-            self.reset()
             model.learn(total_timesteps=self.hyperparams["total_timesteps"], reset_num_timesteps=False)
             if nb_episode % evaluate_every == 0:
                 print(f"Indicateurs du modèle après l'épisode : {i}")

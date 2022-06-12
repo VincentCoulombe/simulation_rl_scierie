@@ -1,16 +1,17 @@
-from EnvSimpy import *
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 
-def pile_la_plus_elevee(env: EnvSimpy):
-    return np.argmax(env.getState()[1:])
+def pile_la_plus_elevee(env):
+    qte_dans_cours, _, obj_proportion_inf, _ = env.getIndicateursInventaire()
+    return np.argmax(qte_dans_cours-obj_proportion_inf)
     
-def aleatoire(env: EnvSimpy):
+def aleatoire(env):
     #Mettre une action aléatoire valide
     pass
 
-def gestion_horaire_et_pile(env: EnvSimpy):
+def gestion_horaire_et_pile(env):
     # Sécher pile la plus haute + gérer le vendredi
     pass
     

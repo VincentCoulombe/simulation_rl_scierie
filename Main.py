@@ -57,16 +57,13 @@ if __name__ == '__main__':
     random.seed(1)
     
     timer_avant = time.time()
-    vec_env = DummyVecEnv([lambda: EnvGym(paramSimu, get_action_space(paramSimu), get_state_space(paramSimu), state_min = 0, state_max = 1, hyperparams=hyperparams),
-                           lambda: EnvGym(paramSimu7525, get_action_space(paramSimu7525), get_state_space(paramSimu7525), state_min = 0, state_max = 1, hyperparams=hyperparams),
-                           lambda: EnvGym(paramSimu2575, get_action_space(paramSimu2575), get_state_space(paramSimu2575), state_min = 0, state_max = 1, hyperparams=hyperparams)])
-    
-    model = PPO('MlpPolicy', vec_env, n_steps=hyperparams["n_steps"], batch_size=hyperparams["batch_size"], n_epochs=hyperparams["n_epochs"], learning_rate=hyperparams["lr"],
+    env = EnvGym(paramSimu, get_action_space(paramSimu), get_state_space(paramSimu), state_min = 0, state_max = 1, hyperparams=hyperparams)
+    model = PPO('MlpPolicy', env, n_steps=hyperparams["n_steps"], batch_size=hyperparams["batch_size"], n_epochs=hyperparams["n_epochs"], learning_rate=hyperparams["lr"],
                 verbose=0, tensorboard_log=f"logs/logs_{int(time.time())}/")
     
     #Tests
     # envRL5050.solve_w_heuristique("pile_la_plus_elevee")
-    train_model(vec_env, model, nb_episode=2)
+    env.train_model(model, nb_episode=2)
     
     print(f"Temps d'exécution : {time.time()-timer_avant:.2f}")
     
