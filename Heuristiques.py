@@ -2,23 +2,40 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from Temps import *
+import random
 
 
 def pile_la_plus_elevee(env):
-    qte_dans_cours, _, obj_proportion_inf, _ = env.getIndicateursInventaire()
+    qte_dans_cours, _, obj_proportion_inf, _, _ = env.getIndicateursInventaire()
     return np.argmax(qte_dans_cours-obj_proportion_inf)
     
 def aleatoire(env):
     #Mettre une action aléatoire valide
-    pass
+
+    if not env.sourceDisponible() or not env.destinationDisponible() :
+        return -1, -1
+    
+    charg = -1
+    while charg == -1 :
+        action = random.randint(0,(len(env.paramSimu["df_regles"])-1))        
+        charg = env.LienActionCharg[action]
+            
+    return action    
+
 
 def gestion_horaire_et_pile(env):
     # Sécher pile la plus haute + gérer le vendredi
+<<<<<<< HEAD
     day_of_week, hour = GetInfosTemps(env.now)
     if day_of_week != 5 or hour < 12:
         return pile_la_plus_elevee(env)
     qte_dans_cours, _, obj_proportion_inf, _ = env.getIndicateursInventaire()
     return np.argmax(qte_dans_cours[7:]-obj_proportion_inf[7:])
+=======
+    
+    # GetDestinationCourante : permettra de connaître le temps prévu restant au séchage en cours
+    pass
+>>>>>>> 325f8dce9e42048ae591f7c6eaf2ce4466a5d52d
     
 if __name__ == '__main__':
     regles = pd.read_csv("DATA/regle.csv")

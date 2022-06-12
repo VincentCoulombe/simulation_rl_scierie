@@ -37,6 +37,8 @@ if __name__ == '__main__':
              "TempsSechageAirLibre": 7 * 24,
              "RatioSechageAirLibre": 0.1 * 12 / 52,
              "MaxSechageAirLibre" : 30/100,
+             "DureeDeteriorationEpinette" : 30 * 24, 
+             "DureeDeteriorationSapin" : 4 * 30 * 24, 
              "HresProdScieriesParSem": sum(df_HoraireScierie[:168]["work_time"]),
              "VariationProdScierie": 0.1,  # Pourcentage de variation de la demande par rapport à la production de la scierie
              "VariationTempsSechage": 0.1,
@@ -64,7 +66,7 @@ if __name__ == '__main__':
     
     #Tests
     # envRL5050.solve_w_heuristique("pile_la_plus_elevee")
-    env.train_model(model, nb_episode=2)
+    env.train_model(model, nb_episode=5,evaluate_every=1)
     
     print(f"Temps d'exécution : {time.time()-timer_avant:.2f}")
     
