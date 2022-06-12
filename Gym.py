@@ -10,6 +10,7 @@ import time
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 from Heuristiques import *
+from utils import *
 from EnvSimpy import EnvSimpy
 from stable_baselines3.common.callbacks import BaseCallback
 

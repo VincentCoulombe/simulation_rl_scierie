@@ -1,10 +1,18 @@
 from EnvSimpy import *
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 def pile_la_plus_elevee(env: EnvSimpy):
     return np.argmax(env.getState()[1:])
     
+def aleatoire(env: EnvSimpy):
+    #Mettre une action aléatoire valide
+    pass
+
+def gestion_horaire_et_pile(env: EnvSimpy):
+    # Sécher pile la plus haute + gérer le vendredi
+    pass
     
 if __name__ == '__main__':
     regles = pd.read_csv("DATA/regle.csv")
