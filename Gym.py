@@ -162,12 +162,14 @@ class EnvGym(gym.Env) :
         self.plot_progression_reward()
         print(f"Moyenne Reward : {self.get_avg_reward():.2f}")
             
-    def solve_w_heuristique(self, heuristique: str = "Aléatoire"):
+    def solve_w_heuristique(self, heuristique: str = "aleatoire"):
         _ = self.reset(test=True)  
         done = False  
         while not done: 
             if heuristique == "pile_la_plus_elevee":
                 action = pile_la_plus_elevee(self.env)
+            elif heuristique == "gestion_horaire_et_pile":
+                action = gestion_horaire_et_pile(self.env)
             _, _, done, _ = self.step(action)      
         self.plot_inds_inventaires()
         self.plot_taux_utilisations()

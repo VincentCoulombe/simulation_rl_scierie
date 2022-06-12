@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from Temps import *
 
 
 def pile_la_plus_elevee(env):
@@ -13,7 +14,11 @@ def aleatoire(env):
 
 def gestion_horaire_et_pile(env):
     # Sécher pile la plus haute + gérer le vendredi
-    pass
+    day_of_week, hour = GetInfosTemps(env.now)
+    if day_of_week != 5 or hour < 12:
+        return pile_la_plus_elevee(env)
+    qte_dans_cours, _, obj_proportion_inf, _ = env.getIndicateursInventaire()
+    return np.argmax(qte_dans_cours[7:]-obj_proportion_inf[7:])
     
 if __name__ == '__main__':
     regles = pd.read_csv("DATA/regle.csv")
