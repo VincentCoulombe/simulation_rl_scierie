@@ -43,7 +43,7 @@ if __name__ == '__main__':
              "VariationProdScierie": 0.1,  # Pourcentage de variation de la demande par rapport à la production de la scierie
              "VariationTempsSechage": 0.1,
              "VariationTempsDeplLoader": 0.1,
-             "FacteurSortieScierie" : 0.35, # Permet de sortir plus ou moins de la scierie (1 correspond à sortir exactement ce qui est prévu)
+             "FacteurSortieScierie" : 0.3, # Permet de sortir plus ou moins de la scierie (1 correspond à sortir exactement ce qui est prévu)
              "ObjectifStableEnPMP" : 215000 * 4 * 2.5,
              "RatioSapinEpinette" : "50/50"
              }
@@ -61,8 +61,8 @@ if __name__ == '__main__':
                 verbose=0, tensorboard_log=f"logs/logs_{int(time.time())}/")
     
     #Tests
-    # env.solve_w_heuristique("gestion_horaire_et_pile")
-    env.train_model(model, nb_episode=5,evaluate_every=1)
+    env.solve_w_heuristique("gestion_horaire_et_pile")
+    # env.train_model(model, nb_episode=5,evaluate_every=1)
     
     print(f"Temps d'exécution : {time.time()-timer_avant:.2f}")
     
