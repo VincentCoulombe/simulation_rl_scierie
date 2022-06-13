@@ -72,7 +72,7 @@ class EnvSimpy(simpy.Environment):
         
         # Création des numpy pour conserver tout le calendrier d'événements ainsi que chaque chargement produit
         self.Evenements = np.asarray([["Temps","Événement","Loader","Source", "Destination","Charg","description"]],dtype='U50')
-        self.npCharg = np.array([["Temps","Charg","regle","description","essence","Emplacement","temps sechage","Est deteriorer ?"]],dtype='U50')
+        self.npCharg = np.array([["Temps","Charg","regle","description","essence","Emplacement","temps sechage","Est deteriorer ?","Temps debut sechage"]],dtype='U50')
                 
         
         # Dictionnaires permettant de se rendre indépendant des numéros de colonnes malgré qu'on soit 
@@ -84,7 +84,8 @@ class EnvSimpy(simpy.Environment):
                       "essence" : 4,
                       "Emplacement" : 5,
                       "temps sechage" : 6,
-                      "Est deteriorer ?" : 7}
+                      "Est deteriorer ?" : 7,
+                      "Temps debut sechage" : 8}
         
         # Transférer le pandas dans un numpy en conservant le nom des colonnes comme première ligne
         # pour faciliter le débuggage.  Un dictionnaire permettant de se rendre indépendant des numéros 
@@ -135,7 +136,7 @@ class EnvSimpy(simpy.Environment):
     # au moins le nombre de chargement de notre objectif stable - 2
     def InitEnvInitialAleatoire(self) : 
         
-        while sum(self.QteDansCours - self.ObjectifStable) < -2 or NbSechoirsPleins < self.paramSimu["nbSechoir1"] -1 : 
+        while self.nbStep < self.paramSimu["NbStepSimulation"] and (sum(self.QteDansCours - self.ObjectifStable) < -2 or NbSechoirsPleins < self.paramSimu["nbSechoir1"] -1 ) : 
             self.stepSimpy(pile_la_plus_elevee(self))
             
             NbSechoirsPleins = 0
@@ -175,33 +176,58 @@ class EnvSimpy(simpy.Environment):
     # Trouver un séchoir de libre, si plusieurs séchoir, prendre lui qui devrait se libérer en premier
     def GetDestinationCourante(self) : 
         
-        destination = "Attente"
-        TempsSechageMin = 9999999999
-        destinationMin = destination
-        for key in self.lesEmplacements.keys() : 
-            if "Préparation séchoir" in key :
-                if not self.lesEmplacements[key].EstPlein() :
-                    destination = self.lesEmplacements[key].Nom
-                    NomSechoir = "Séchoir" + destination[len("Préparation séchoir"):]
-                    dureeRestante = self.lesEmplacements[NomSechoir].GetDureeRestante()
-                    if dureeRestante < TempsSechageMin : 
-                        destinationMin = destination
-                        TempsSechageMin = dureeRestante
+        #destination = "Attente"
+        #TempsSechageMin = 9999999999
+       # destinationMin = destination
+       # for key in self.lesEmplacements.keys() : 
+       #     if "Préparation séchoir" in key :
+       #         if not self.lesEmplacements[key].EstPlein() :
+       #             destination = self.lesEmplacements[key].Nom
+       #             NomSechoir = "Séchoir" + destination[len("Préparation séchoir"):]
 
+        if self.DestinationCourante is None : 
+            return "Attente"
+        else : 
+            return "Préparation séchoir" + self.DestinationCourante
+
+    def GetTempsRestantSechoirs(self) : 
         
-                        
-        return destination, TempsSechageMin
+        return self.lstTempsSechoirs
 
+    # Met à jour les attributs qui permettent de savoir le temps restant aux séchoirs ainsi que le séchoir à remplir.
+    # Les valeurs retournées peuvent être négatives si le bois est déjà dans le séchoir depuis plus longtemps que ce qui était prévu initialement
+    # La liste retournée retourne en premier l'info du séchoir courant à remplir, puis les autres en ordre du temps de séchage le plus court au plus élevé
     def UpdateTempsSechoirs(self) : 
         
-        for key in self.lesEmplacements.keys() : 
-            if "Préparation séchoir" in key or "Séchoir" in key :
-                print(key)
+        self.lstTempsSechoirs = []
+        TempsSechageMin = 9999999999
+        self.DestinationCourante = None
+        for PrepSech in self.lesEmplacements.keys() : 
+            if "Préparation séchoir" in PrepSech :
                 
+                IndiceSechoir = PrepSech[len("Préparation séchoir"):]
+                NomSechoir = "Séchoir" + IndiceSechoir
+                
+                TempsBoisDansWagon = sum(self.npCharg[self.npCharg[:,self.cCharg["Emplacement"]] == PrepSech,self.cCharg["temps sechage"]].astype(float))
+                
+                TempsDansSechoir = self.npCharg[self.npCharg[:,self.cCharg["Emplacement"]] == NomSechoir,self.cCharg["temps sechage"]].astype(float)                
+                TempsDebutSechage = self.npCharg[self.npCharg[:,self.cCharg["Emplacement"]] == NomSechoir,self.cCharg["Temps debut sechage"]].astype(float)
+                TempsBoisDansSechoir = sum(TempsDebutSechage + TempsDansSechoir - self.now )
 
-
-
-
+                self.lstTempsSechoirs.append(TempsBoisDansSechoir)                
+                
+                if TempsBoisDansSechoir < TempsSechageMin and not self.lesEmplacements[PrepSech].EstPlein() : 
+                    TempsSechageMin = TempsBoisDansSechoir
+                    self.DestinationCourante = IndiceSechoir
+  
+        if self.DestinationCourante is None : 
+            self.lstTempsSechoirs = np.sort(self.lstTempsSechoirs)
+        else :            
+            courant = self.lstTempsSechoirs[int(self.DestinationCourante) -1 ]
+            autres = np.hstack((self.lstTempsSechoirs[:int(self.DestinationCourante) -1],self.lstTempsSechoirs[int(self.DestinationCourante):]))
+            autres = np.sort(autres)
+            
+            self.lstTempsSechoirs = np.hstack((courant,autres))      
 
     # Retourne si au moins une destination est disponible ou non
     def destinationDisponible(self) : 
@@ -219,11 +245,12 @@ class EnvSimpy(simpy.Environment):
         return not (max(self.LienActionCharg) == -1)
 
     def stepSimpy(self,action) : 
-                
-        if action != -1 : 
-            if pile_la_plus_elevee(self) != action : 
-                self.RewardActionInvalide = True
-                return False
+          
+        # Code pour le pré-entrainement en se comparant à l'heuristique pour partir de moins loin...
+        #if action != -1 : 
+        #    if pile_la_plus_elevee(self) != action : 
+        #        self.RewardActionInvalide = True
+        #        return False
         
         # Effectuer l'action déterminée par le RL
         loader, _ = self.RetLoaderCourant()
@@ -242,7 +269,7 @@ class EnvSimpy(simpy.Environment):
         # Aucune action possible, le loader est tombé en attente, on attend qu'il se passe quelque chose avant de finalisé le step...
         # Présentement, on fait attendre le loader 1h avant de vérifier le step à nouveau
         if (not self.sourceDisponible() or not self.destinationDisponible()) and self.nbStep < self.paramSimu["NbStepSimulation"] :
-            self.updateLienActionChargement()
+            self.updateApresStep()
             return self.stepSimpy(-1)
                 
         
@@ -321,7 +348,7 @@ class EnvSimpy(simpy.Environment):
 
         self.updateLienActionChargement()
         self.updateInventaire()
-        #self.UpdateTempsSechoirs()
+        self.UpdateTempsSechoirs()
 
     def getIndicateursInventaire(self) : 
         
@@ -342,16 +369,10 @@ class EnvSimpy(simpy.Environment):
         day_of_week = min_max_scaling(day_of_week,1,7)
         hour = min_max_scaling(hour,0,24)
         
-        # Temps restant au séchoir où l'on veut amener du stock
-        _, TempsRestantSechoir = self.GetDestinationCourante()
+        # Temps restant au séchoir où l'on veut amener du stock       
+        TempsRestantSechoir = min_max_scaling(self.GetTempsRestantSechoirs(),-100,100)
         
-        #if TempsRestantSechoir == 0 :
-         #   print(self.now, day_of_week,hour)
-        
-        TempsRestantSechoir = min_max_scaling(TempsRestantSechoir,-100,100)
-
-        
-        return np.concatenate(([self.PropEpinettesSortieSciage],QteDansCours,[day_of_week,hour],[0,0,0,0]))
+        return np.concatenate(([self.PropEpinettesSortieSciage],QteDansCours,[day_of_week,hour],TempsRestantSechoir))
     
     # Retourne la quantité totale séchée et sciée pour chaque produits depuis le début de la simulation
     def getQteTotale(self) :     
@@ -455,7 +476,7 @@ def Sciage(env,npUneRegle) :
         # On sort la quantité de la scierie       
         env.DernierCharg += 1
         emplacement = "Sortie sciage"
-        nouveaunp = np.asarray([[env.now,env.DernierCharg,produit,description,essence, emplacement,tempsSechage,"NON"]],dtype='U50')
+        nouveaunp = np.asarray([[env.now,env.DernierCharg,produit,description,essence, emplacement,tempsSechage,"NON",0]],dtype='U50')
         env.npCharg = np.vstack((env.npCharg,nouveaunp))
         env.EnrEven("Sortie sciage",Charg = env.DernierCharg)
         
@@ -478,8 +499,9 @@ def Sechage(env,charg,NomPrepSechage) :
     # Transférer le wagon dans le séchoir et commencer le séchage
     yield env.lesEmplacements[NomSechoir].request()   
     env.EnrEven("Début séchage",Charg = charg, Destination = NomSechoir)
+    env.npCharg[charg][env.cCharg["Emplacement"]] = NomSechoir
+    env.npCharg[charg][env.cCharg["Temps debut sechage"]] = env.now
     env.lesEmplacements[NomSechoir].LogCapacite()
-    env.lesEmplacements[NomSechoir].SetHeureFinPrevue(env.now,tempsSechage)
     yield env.timeout(random.triangular(tempsMin,tempsMax,tempsSechage))
     
     # Le séchage est terminé, libérer le séchoir pour pouvoir faire entrer un autre wagon
@@ -548,7 +570,7 @@ if __name__ == '__main__':
     paramSimu = {"df_regles": regles,
              "df_HoraireLoader" : df_HoraireLoader,
              "df_HoraireScierie" : df_HoraireScierie,
-             "NbStepSimulation": 64*1,
+             "NbStepSimulation": 64*5,
              "NbStepSimulationTest": 64*2,
              "nbLoader": 1,
              "nbSechoir1": 4,
@@ -566,7 +588,7 @@ if __name__ == '__main__':
              "VariationProdScierie": 0.1,  # Pourcentage de variation de la demande par rapport à la production de la scierie
              "VariationTempsSechage": 0.1,
              "VariationTempsDeplLoader": 0.1,
-             "FacteurSortieScierie" : 0.5, # Permet de sortir plus ou moins de la scierie (1 correspond à sortir exactement ce qui est prévu)
+             "FacteurSortieScierie" : 1, # Permet de sortir plus ou moins de la scierie (1 correspond à sortir exactement ce qui est prévu)
              "ObjectifStableEnPMP" : 215000 * 4 * 2.5,
              "RatioSapinEpinette" : "50/50"
              }

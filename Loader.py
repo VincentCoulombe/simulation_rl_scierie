@@ -46,7 +46,7 @@ class Loader() :
                 duree = self.env.paramSimu["TempsAttenteActionInvalide"]
                         
         # Trouver un séchoir de libre
-        destination, _ = self.env.GetDestinationCourante()
+        destination = self.env.GetDestinationCourante()
                                 
         # On doit attendre, effectuer cette attente.  Mettre un message dans les événements seulement la
         # première fois s'il y a des attentes successives

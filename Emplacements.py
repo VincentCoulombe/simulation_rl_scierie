@@ -22,16 +22,7 @@ class Emplacements(simpy.Resource) :
             self.df_horaire = work_schedule(day_start = 0, day_end = 24, work_on_weekend = True)
         else : 
             self.df_horaire = df_horaire       
-       
-    def SetHeureFinPrevue(self,Debut, DureePrevue) : 
-        self.HeureFinPrevue = Debut + DureePrevue
-        
-    def GetDureeRestante(self):
-        if self.HeureFinPrevue > 0 : 
-            return self.HeureFinPrevue - self.env.now
-        else:
-            return 0
-        
+               
     def request(self,**kwargs) :
         
         request = super().request(**kwargs)
