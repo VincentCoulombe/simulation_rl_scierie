@@ -153,7 +153,7 @@ class EnvGym(gym.Env) :
                 print(f"Indicateurs du modèle après l'épisode : {i}")
                 self.evaluate_model(model)
             if save:
-                model.save(f"{models_dir}/episode{i}_reward_moyen{self.get_avg_reward():.2f}")
+                model.save(f"{models_dir}/episode{i}_reward_moyen{self.rewards_moyens[-1]:.2f}")
 
 
         plt.plot(list(range(self.simu_counter)), self.rewards_moyens, label="reward moyen", color="green")
