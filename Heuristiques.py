@@ -25,17 +25,11 @@ def aleatoire(env):
 
 def gestion_horaire_et_pile(env):
     # Sécher pile la plus haute + gérer le vendredi
-<<<<<<< HEAD
     day_of_week, hour = GetInfosTemps(env.now)
-    if day_of_week != 5 or hour < 12:
+    if day_of_week >= 4:
         return pile_la_plus_elevee(env)
-    qte_dans_cours, _, obj_proportion_inf, _ = env.getIndicateursInventaire()
+    qte_dans_cours, _, obj_proportion_inf, _, _ = env.getIndicateursInventaire()
     return np.argmax(qte_dans_cours[7:]-obj_proportion_inf[7:])
-=======
-    
-    # GetDestinationCourante : permettra de connaître le temps prévu restant au séchage en cours
-    pass
->>>>>>> 325f8dce9e42048ae591f7c6eaf2ce4466a5d52d
     
 if __name__ == '__main__':
     regles = pd.read_csv("DATA/regle.csv")

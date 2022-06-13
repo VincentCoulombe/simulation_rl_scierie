@@ -36,11 +36,12 @@ class EnvGym(gym.Env) :
                                        self.env.getTauxUtilisationLoader(), 
                                        self.env.getTauxUtilisationScierie(), 
                                        self.env.getTauxUtilisationSechoirs(),
-                                       self.env.getTauxRemplissageCours()])
+                                       self.env.getTauxRemplissageCours(),
+                                       1 - self.env.getTauxCoursBonEtat()])
     
     def _update_reward(self) -> None:
         
-        qte_dans_cours, obj_qte_total, obj_proportion_inf, obj_proportion_sup = self.env.getIndicateursInventaire()
+        qte_dans_cours, obj_qte_total, obj_proportion_inf, obj_proportion_sup, _ = self.env.getIndicateursInventaire()
         self.inds_inventaires.append([self.env.now, *qte_dans_cours, *obj_qte_total, *obj_proportion_inf, *obj_proportion_sup])
         
         diff_proportion_qte = obj_proportion_inf-obj_qte_total # Si différence positive, on a trop de container de ce type dans la cours
@@ -75,7 +76,7 @@ class EnvGym(gym.Env) :
         self.step_counter = 0
         return self.state   
     
-    def step (self, action, verbose=False) -> tuple: 
+    def step (self, action, verbose=True) -> tuple: 
         self.done = self.env.stepSimpy(action)
         self._update_reward()
         self._update_observation()
@@ -122,11 +123,12 @@ class EnvGym(gym.Env) :
     def plot_taux_utilisations(self) -> None:
         # Afficher les indicateurs de taux d'utilisation
         df_taux_utilisation = pd.DataFrame(self.taux_utilisations, columns=["time", "taux_utilisation_loader", "taux_utilisation_scierie",
-                                                                            "taux_utilisation_séchoir", "taux_remplissage_cours"])
+                                                                            "taux_utilisation_séchoir", "taux_remplissage_cours", "taux_stock_pourris"])
         plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_utilisation_loader"], label="taux utilisation loader", color="blue")
         plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_utilisation_scierie"], label="taux utilisation scierie", color="green")
         plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_utilisation_séchoir"], label="taux utilisation séchoir", color="red")
         plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_remplissage_cours"], label="utilisation de la cours au temps t", color="yellow")
+        plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_stock_pourris"], label="taux du stock pourris dans la cours", color="purple")
         plt.legend()
         plt.show()
     
@@ -170,6 +172,6 @@ class EnvGym(gym.Env) :
                 action = pile_la_plus_elevee(self.env)
             elif heuristique == "gestion_horaire_et_pile":
                 action = gestion_horaire_et_pile(self.env)
-            _, _, done, _ = self.step(action)      
-        self.plot_inds_inventaires()
+            obs, _, done, _ = self.step(action) 
+        # self.plot_inds_inventaires()
         self.plot_taux_utilisations()
