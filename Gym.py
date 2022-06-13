@@ -27,7 +27,13 @@ class EnvGym(gym.Env) :
         self.observation_space = spaces.Box(low=self.low, high=self.high, dtype=np.float32)
         self.simu_counter = 0  
         self.rewards_moyens = []
-        self.hyperparams = hyperparams 
+        self.hyperparams = hyperparams
+        try:
+            self.training_wheels = True
+            self.training_wheels_df = pd.read_csv(r"DATA/training_wheels.csv")
+        except FileNotFoundError:
+            self.training_wheels = False
+            self.training_wheels_df = None
                
     def _update_observation(self) -> None:
         
@@ -59,8 +65,7 @@ class EnvGym(gym.Env) :
         respect_obj_proportion = -sum(ecart**2 for ecart in outside_prop_range_prenalty) + sum(inside_prop_range_bonus) # Punis si la proportion sort du range voulu et récompense sinon
         
         self.reward = respect_obj_qte_total+respect_obj_proportion
-        self.reward += 1/self.step_counter*100*self.env.getActionInvalide()
-        # self.reward += -100 if self.env.getActionInvalide() == 1 else 100
+        self.reward += -100 if self.env.getActionInvalide() == 1 else 100
         
     def get_avg_reward(self) -> float:
         return np.array(self.rewards)[:, 1].mean()
@@ -79,6 +84,8 @@ class EnvGym(gym.Env) :
         return self.state   
     
     def step (self, action, verbose=True) -> tuple: 
+        if self.training_wheels:
+            action = self.training_wheels_df.iloc[self.step_counter, 2]
         self.done = self.env.stepSimpy(action)
         self._update_reward()
         self._update_observation()
@@ -141,13 +148,20 @@ class EnvGym(gym.Env) :
         plt.legend()
         plt.show()
     
-    def train_model(self, model: PPO, nb_episode: int, save: bool=False, evaluate_every: int = 20, logs_dir: str = "") -> None:
+    def train_model(self, model: PPO, nb_episode: int, save: bool=False, evaluate_every: int = 20, logs_dir: str = "", training_wheels: bool = True) -> None:
         if logs_dir != "":
             os.makedirs(logs_dir, exist_ok=True)
         if save:
             models_dir = f"models/training_{int(time.time())}/"
             os.makedirs(models_dir, exist_ok=True)
-
+        self.training_wheels = training_wheels
+        if self.training_wheels:
+            if self.training_wheels_df is not None:
+                print("Training wheels...")
+                model.learn(total_timesteps=self.hyperparams["total_timesteps"], reset_num_timesteps=False)
+                self.training_wheels = False
+            else:
+                print("Ne peut pas utiliser les roues d'entraînement. Besoin de : /DATA/training_wheels.csv")
         for i in range(nb_episode):
             model.learn(total_timesteps=self.hyperparams["total_timesteps"], reset_num_timesteps=False)
             if nb_episode % evaluate_every == 0:

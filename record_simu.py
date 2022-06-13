@@ -60,6 +60,6 @@ if __name__ == "__main__":
     env = EnvSimpy(paramSimu)
     recorder = SimuRecorder(env)
     df = recorder.record("pile_la_plus_elevee")
-    df.to_csv("pile_la_plus_elevee.csv")
+    df.to_csv(r"DATA/training_wheels.csv")
 
     
