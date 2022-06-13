@@ -158,7 +158,7 @@ def HeuresProductives(df,debut,fin):
 if __name__ == "__main__":
     
     
-    df = work_schedule(nb_days = 365, day_start = 0, day_end = 24, month_start = 1,work_on_weekend=True)
+    df = work_schedule(nb_days = 365, day_start = 0, day_end = 24, month_start = 1,work_on_weekend=False)
     task_length = task_total_length(df, task_start = 360*24, task_time = 23)
     #print(task_length)
     

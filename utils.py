@@ -28,7 +28,7 @@ def get_state_space(paramSimu) :
     NbDemandeVsProduit = len(paramSimu["df_regles"])
     NbParamPropEpinettesSortieSciage = 1
     NbParamTemps = 2
-    NbParamTempsRestantSechoirs = 1
+    NbParamTempsRestantSechoirs = 4
     return NbDemandeVsProduit + NbParamPropEpinettesSortieSciage + NbParamTemps + NbParamTempsRestantSechoirs
     
 if __name__ == '__main__': 

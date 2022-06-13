@@ -31,10 +31,10 @@ from Heuristiques import *
 # horaire loader et scierie
 # Générer une cours initiale pour ne pas commencer à vide (attention pour ne pas brisé les indicateurs qui compte les qtés qui sortent direct sur npCharg)
 # Meilleur gestion des blocages de la scierie
-
-############### Idées, mais à voir si on va le faire
 # Inclure du séchage à l'air libre (voir procédure SechageAirLibre déjà commencée)
 # Pour l'instant envoi dans le premier séchoir qui a de la place si plusieurs libres... pourrait remplir le rail devant mauvais séchoir...
+
+############### Idées, mais à voir si on va le faire
 # passage par la cours
 # gérer temps attente loader pour prochain événement au lieu d'attendre 1 heure s'il n'a rien à faire...
 # aléatoire selon les quantités de chaque produits dans la cours au lieu de juste choisir une règle (éviterait de toujours vider les règles)
@@ -127,7 +127,7 @@ class EnvSimpy(simpy.Environment):
         print("Début de la simulation")
         
         self.InitEnvInitialAleatoire()
-
+      
 
     # Initialise une cours aléatoirement en roulant la simulation pendant un 
     # certains temps (régime transitoire).  On considère une cours intéressante
@@ -187,8 +187,21 @@ class EnvSimpy(simpy.Environment):
                     if dureeRestante < TempsSechageMin : 
                         destinationMin = destination
                         TempsSechageMin = dureeRestante
+
+        
                         
         return destination, TempsSechageMin
+
+    def UpdateTempsSechoirs(self) : 
+        
+        for key in self.lesEmplacements.keys() : 
+            if "Préparation séchoir" in key or "Séchoir" in key :
+                print(key)
+                
+
+
+
+
 
     # Retourne si au moins une destination est disponible ou non
     def destinationDisponible(self) : 
@@ -207,6 +220,11 @@ class EnvSimpy(simpy.Environment):
 
     def stepSimpy(self,action) : 
                 
+        if action != -1 : 
+            if pile_la_plus_elevee(self) != action : 
+                self.RewardActionInvalide = True
+                return False
+        
         # Effectuer l'action déterminée par le RL
         loader, _ = self.RetLoaderCourant()
         loader.DeplacerLoader(action)
@@ -277,11 +295,10 @@ class EnvSimpy(simpy.Environment):
         count = (count-1)
         self.QteDansCours = count
         self.proportionReelle = count / max(1,sum(count))
-                
+        
         # Quantité dans la cours de chaque produit qu'on est entrain de perdre en s'assurant d'avoir le produit dans la liste même si la quantité est à 0
         Charg = np.concatenate((self.np_regles[1:,self.cRegle["regle"]],
                                 self.npCharg[(self.npCharg[:,self.cCharg["Emplacement"]] == "Sortie sciage") & (self.npCharg[:,self.cCharg["Est deteriorer ?"]] == "OUI"),self.cCharg["regle"]]))
-                                #self.npCharg[(self.npCharg[:,self.cCharg["Emplacement"]] == "Sortie sciage") & (self.npCharg[:,self.cCharg["essence"]] == "SAPIN") & (self.npCharg[:,self.cCharg["Temps"]] <= str(self.now - self.paramSimu["DureeDeteriorationSapin"])),self.cCharg["regle"]]))
         unique,count = np.unique(Charg.astype(int),return_counts = True)        
         count = (count-1)
         self.QteCoursDeteriorer = count
@@ -304,6 +321,7 @@ class EnvSimpy(simpy.Environment):
 
         self.updateLienActionChargement()
         self.updateInventaire()
+        #self.UpdateTempsSechoirs()
 
     def getIndicateursInventaire(self) : 
         
@@ -326,9 +344,14 @@ class EnvSimpy(simpy.Environment):
         
         # Temps restant au séchoir où l'on veut amener du stock
         _, TempsRestantSechoir = self.GetDestinationCourante()
+        
+        #if TempsRestantSechoir == 0 :
+         #   print(self.now, day_of_week,hour)
+        
         TempsRestantSechoir = min_max_scaling(TempsRestantSechoir,-100,100)
 
-        return np.concatenate(([self.PropEpinettesSortieSciage],QteDansCours,[day_of_week,hour],[TempsRestantSechoir]))
+        
+        return np.concatenate(([self.PropEpinettesSortieSciage],QteDansCours,[day_of_week,hour],[0,0,0,0]))
     
     # Retourne la quantité totale séchée et sciée pour chaque produits depuis le début de la simulation
     def getQteTotale(self) :     
@@ -383,6 +406,8 @@ class EnvSimpy(simpy.Environment):
         
         return 1 - (sum(self.QteCoursDeteriorer) / max(1,sum(self.QteDansCours)))
 
+    def getActionInvalide(self) : 
+        return self.RewardActionInvalide
 
 # Lance les différents sciages selon le rythme prédéterminé dans les règles
 def Sciage(env,npUneRegle) :
@@ -443,7 +468,7 @@ def Sciage(env,npUneRegle) :
 # Effectue le séchage selon les temps de séchage des chargements.  Le temps de séchage ici
 # est affecté si on active le séchage à l'air libre.
 def Sechage(env,charg,NomPrepSechage) : 
-    
+        
     NomSechoir = "Séchoir" + NomPrepSechage[len("Préparation séchoir"):]   
     produit = int(env.npCharg[charg][env.cCharg["regle"]])
     tempsSechage = float(env.npCharg[charg][env.cCharg["temps sechage"]])
@@ -523,11 +548,11 @@ if __name__ == '__main__':
     paramSimu = {"df_regles": regles,
              "df_HoraireLoader" : df_HoraireLoader,
              "df_HoraireScierie" : df_HoraireScierie,
-             "NbStepSimulation": 64*5,
+             "NbStepSimulation": 64*1,
              "NbStepSimulationTest": 64*2,
              "nbLoader": 1,
              "nbSechoir1": 4,
-             "CapaciteSortieSciage": 250, # En nombre de chargements avant de bloquer la scierie
+             "CapaciteSortieSciage": 100, # En nombre de chargements avant de bloquer la scierie
              "CapaciteSechageAirLibre": 0,
              "CapaciteCours": 0,
              "TempsAttenteLoader": 1,
@@ -583,7 +608,8 @@ if __name__ == '__main__':
         lstUtilLoader.append(env.getTauxUtilisationLoader())
         lstBonEtat.append(env.getTauxCoursBonEtat())
         lstCours.append(env.getTauxRemplissageCours())
-    
+        env.getState()
+            
     plt.plot(lstQteDansCours)
     plt.plot(lstQteStable)
     plt.plot(lstinf)
