@@ -99,7 +99,9 @@ class EnvGym(gym.Env) :
         # Afficher la progression du reward dans la simulation
         df_rewards = pd.DataFrame(self.rewards, columns=["time", "reward"])    
         plt.plot(df_rewards["time"], df_rewards["reward"], label="reward", color="red")
-        plt.title("Reward en fonction du Temps")    
+        plt.title("Reward en fonction du Temps") 
+        plt.xlabel("Temps")
+        plt.ylabel("Reward")   
         plt.legend()    
         plt.show()   
         
@@ -117,6 +119,8 @@ class EnvGym(gym.Env) :
             plt.plot(df_inds_inv[f"proportion_voulue_min{i}"], label="proportion voulue min", color="green")
             plt.plot(df_inds_inv[f"proportion_voulue_max{i}"], label="proportion voulue max", color="green")
             plt.title(f"Chargement de type : {i}")
+            plt.xlabel("Temps")
+            plt.ylabel("Nombre de chargements dans la cours")
             plt.legend()
             plt.show()
             
@@ -129,6 +133,9 @@ class EnvGym(gym.Env) :
         plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_utilisation_séchoir"], label="taux utilisation séchoir", color="red")
         plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_remplissage_cours"], label="utilisation de la cours au temps t", color="yellow")
         plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_stock_pourris"], label="taux du stock pourris dans la cours", color="purple")
+        plt.title("Taux d'utilisation en fonction du temps")
+        plt.xlabel("Temps")
+        plt.ylabel("Taux d'utilisation")
         plt.legend()
         plt.show()
     
