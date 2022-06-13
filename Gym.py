@@ -41,25 +41,26 @@ class EnvGym(gym.Env) :
     
     def _update_reward(self) -> None:
         
-        # qte_dans_cours, obj_qte_total, obj_proportion_inf, obj_proportion_sup, _ = self.env.getIndicateursInventaire()
-        # self.inds_inventaires.append([self.env.now, *qte_dans_cours, *obj_qte_total, *obj_proportion_inf, *obj_proportion_sup])
+        qte_dans_cours, obj_qte_total, obj_proportion_inf, obj_proportion_sup, _ = self.env.getIndicateursInventaire()
+        self.inds_inventaires.append([self.env.now, *qte_dans_cours, *obj_qte_total, *obj_proportion_inf, *obj_proportion_sup])
         
-        # diff_proportion_qte = obj_proportion_inf-obj_qte_total # Si différence positive, on a trop de container de ce type dans la cours
-        # respect_obj_qte_total = -sum(ecart**2 for ecart in diff_proportion_qte if ecart>0) # Punis si les containers de trop dans la cours
+        diff_proportion_qte = obj_proportion_inf-obj_qte_total # Si différence positive, on a trop de container de ce type dans la cours
+        respect_obj_qte_total = -sum(ecart**2 for ecart in diff_proportion_qte if ecart>0) # Punis si les containers de trop dans la cours
         
-        # outside_prop_range_prenalty = [] # Garder la proportion réelle dans le range de proportion voulu
-        # inside_prop_range_bonus = []
-        # for qte_reelle, obj_prop_inf, obj_prop_sup, obj_qte_total in zip(qte_dans_cours, obj_proportion_inf, obj_proportion_sup, obj_qte_total):
-        #     if qte_reelle > obj_prop_sup:
-        #         outside_prop_range_prenalty.append(qte_reelle-obj_prop_sup)
-        #     elif qte_reelle < obj_prop_inf:
-        #         outside_prop_range_prenalty.append(obj_prop_inf-qte_reelle)
-        #     else:
-        #         inside_prop_range_bonus.append(1)                
-        # respect_obj_proportion = -sum(ecart**2 for ecart in outside_prop_range_prenalty) + sum(inside_prop_range_bonus) # Punis si la proportion sort du range voulu et récompense sinon
+        outside_prop_range_prenalty = [] # Garder la proportion réelle dans le range de proportion voulu
+        inside_prop_range_bonus = []
+        for qte_reelle, obj_prop_inf, obj_prop_sup, obj_qte_total in zip(qte_dans_cours, obj_proportion_inf, obj_proportion_sup, obj_qte_total):
+            if qte_reelle > obj_prop_sup:
+                outside_prop_range_prenalty.append(qte_reelle-obj_prop_sup)
+            elif qte_reelle < obj_prop_inf:
+                outside_prop_range_prenalty.append(obj_prop_inf-qte_reelle)
+            else:
+                inside_prop_range_bonus.append(1)                
+        respect_obj_proportion = -sum(ecart**2 for ecart in outside_prop_range_prenalty) + sum(inside_prop_range_bonus) # Punis si la proportion sort du range voulu et récompense sinon
         
-        # self.reward = respect_obj_qte_total+respect_obj_proportion
-        self.reward = -100*self.env.getActionInvalide()
+        self.reward = respect_obj_qte_total+respect_obj_proportion
+        
+        self.reward += -100 if self.env.getActionInvalide() == 1 else 100
         
     def get_avg_reward(self) -> float:
         return np.array(self.rewards)[:, 1].mean()
