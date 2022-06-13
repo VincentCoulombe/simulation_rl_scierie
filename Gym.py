@@ -61,7 +61,6 @@ class EnvGym(gym.Env) :
         self.reward = respect_obj_qte_total+respect_obj_proportion
         
     def get_avg_reward(self) -> float:
-        print(np.array(self.rewards).shape)
         return np.array(self.rewards)[:, 1].mean()
                 
     def reset(self, test:bool =False) -> np.array: 
