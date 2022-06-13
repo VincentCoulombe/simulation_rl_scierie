@@ -36,11 +36,12 @@ class EnvGym(gym.Env) :
                                        self.env.getTauxUtilisationLoader(), 
                                        self.env.getTauxUtilisationScierie(), 
                                        self.env.getTauxUtilisationSechoirs(),
-                                       self.env.getTauxRemplissageCours()])
+                                       self.env.getTauxRemplissageCours(),
+                                       1 - self.env.getTauxCoursBonEtat()])
     
     def _update_reward(self) -> None:
         
-        qte_dans_cours, obj_qte_total, obj_proportion_inf, obj_proportion_sup = self.env.getIndicateursInventaire()
+        qte_dans_cours, obj_qte_total, obj_proportion_inf, obj_proportion_sup, _ = self.env.getIndicateursInventaire()
         self.inds_inventaires.append([self.env.now, *qte_dans_cours, *obj_qte_total, *obj_proportion_inf, *obj_proportion_sup])
         
         diff_proportion_qte = obj_proportion_inf-obj_qte_total # Si différence positive, on a trop de container de ce type dans la cours
@@ -75,7 +76,7 @@ class EnvGym(gym.Env) :
         self.step_counter = 0
         return self.state   
     
-    def step (self, action, verbose=False) -> tuple: 
+    def step (self, action, verbose=True) -> tuple: 
         self.done = self.env.stepSimpy(action)
         self._update_reward()
         self._update_observation()
@@ -98,7 +99,9 @@ class EnvGym(gym.Env) :
         # Afficher la progression du reward dans la simulation
         df_rewards = pd.DataFrame(self.rewards, columns=["time", "reward"])    
         plt.plot(df_rewards["time"], df_rewards["reward"], label="reward", color="red")
-        plt.title("Reward en fonction du Temps")    
+        plt.title("Reward en fonction du Temps") 
+        plt.xlabel("Temps")
+        plt.ylabel("Reward")   
         plt.legend()    
         plt.show()   
         
@@ -116,17 +119,23 @@ class EnvGym(gym.Env) :
             plt.plot(df_inds_inv[f"proportion_voulue_min{i}"], label="proportion voulue min", color="green")
             plt.plot(df_inds_inv[f"proportion_voulue_max{i}"], label="proportion voulue max", color="green")
             plt.title(f"Chargement de type : {i}")
+            plt.xlabel("Temps")
+            plt.ylabel("Nombre de chargements dans la cours")
             plt.legend()
             plt.show()
             
     def plot_taux_utilisations(self) -> None:
         # Afficher les indicateurs de taux d'utilisation
         df_taux_utilisation = pd.DataFrame(self.taux_utilisations, columns=["time", "taux_utilisation_loader", "taux_utilisation_scierie",
-                                                                            "taux_utilisation_séchoir", "taux_remplissage_cours"])
+                                                                            "taux_utilisation_séchoir", "taux_remplissage_cours", "taux_stock_pourris"])
         plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_utilisation_loader"], label="taux utilisation loader", color="blue")
         plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_utilisation_scierie"], label="taux utilisation scierie", color="green")
         plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_utilisation_séchoir"], label="taux utilisation séchoir", color="red")
         plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_remplissage_cours"], label="utilisation de la cours au temps t", color="yellow")
+        plt.plot(df_taux_utilisation["time"], df_taux_utilisation["taux_stock_pourris"], label="taux du stock pourris dans la cours", color="purple")
+        plt.title("Taux d'utilisation en fonction du temps")
+        plt.xlabel("Temps")
+        plt.ylabel("Taux d'utilisation")
         plt.legend()
         plt.show()
     
@@ -143,7 +152,7 @@ class EnvGym(gym.Env) :
                 print(f"Indicateurs du modèle après l'épisode : {i}")
                 self.evaluate_model(model)
             if save:
-                model.save(f"{models_dir}/episode{i}_reward_moyen{self.get_avg_reward():.2f}")
+                model.save(f"{models_dir}/episode{i}_reward_moyen{self.rewards_moyens[-1]:.2f}")
 
 
         plt.plot(list(range(self.simu_counter)), self.rewards_moyens, label="reward moyen", color="green")
@@ -162,12 +171,14 @@ class EnvGym(gym.Env) :
         self.plot_progression_reward()
         print(f"Moyenne Reward : {self.get_avg_reward():.2f}")
             
-    def solve_w_heuristique(self, heuristique: str = "Aléatoire"):
+    def solve_w_heuristique(self, heuristique: str = "aleatoire"):
         _ = self.reset(test=True)  
         done = False  
         while not done: 
             if heuristique == "pile_la_plus_elevee":
                 action = pile_la_plus_elevee(self.env)
-            _, _, done, _ = self.step(action)      
-        self.plot_inds_inventaires()
+            elif heuristique == "gestion_horaire_et_pile":
+                action = gestion_horaire_et_pile(self.env)
+            obs, _, done, _ = self.step(action) 
+        # self.plot_inds_inventaires()
         self.plot_taux_utilisations()
