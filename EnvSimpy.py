@@ -54,6 +54,7 @@ class EnvSimpy(simpy.Environment):
         self.RewardActionInvalide = False
         self.DernierCharg = 0
         self.DebutRegimePermanent = 999999999999
+        self.DetailsEvenements = paramSimu["DetailsEvenements"]
         
         # Gestion de la proportion Sapin/Épinette
         if paramSimu["RatioSapinEpinette"] == "50/50" : 
@@ -151,14 +152,15 @@ class EnvSimpy(simpy.Environment):
                 
     # Enregistre simplement un événement dans la liste des événements passés
     def EnrEven(self,Evenement,NomLoader=None, Charg = None, Source = None, Destination = None) : 
-
-        if Charg == None : 
-            description = None
-        else : 
-            description = self.npCharg[Charg][self.cCharg["description"]]
-    
-        nouveau = np.asarray([[self.now,Evenement,NomLoader, Source, Destination, Charg,description]],dtype='U50')
-        self.Evenements = np.vstack((self.Evenements,nouveau))
+        
+        if self.DetailsEvenements : 
+            if Charg == None : 
+                description = None
+            else : 
+                description = self.npCharg[Charg][self.cCharg["description"]]
+        
+            nouveau = np.asarray([[self.now,Evenement,NomLoader, Source, Destination, Charg,description]],dtype='U50')
+            self.Evenements = np.vstack((self.Evenements,nouveau))
  
     # Retourne le Loader qui devrait être entrain de faire l'action courante ou la prochaine action
     # ainsi que l'heure à laquelle il prévoit faire cette dite action
@@ -570,6 +572,7 @@ if __name__ == '__main__':
     paramSimu = {"df_regles": regles,
              "df_HoraireLoader" : df_HoraireLoader,
              "df_HoraireScierie" : df_HoraireScierie,
+             "DetailsEvenements": False,
              "NbStepSimulation": 64*5,
              "NbStepSimulationTest": 64*2,
              "nbLoader": 1,
@@ -654,7 +657,7 @@ if __name__ == '__main__':
     regles = env.np_regles
 
     #print(propVoulu)
-    #print(propReelle)
+    print(propReelle)
     print("Temps d'exécution : ", timer_après-timer_avant)
     #print("Durée en h/j/an de la simulation : ", env.now, env.now/ 24, env.now/24/365)
     
