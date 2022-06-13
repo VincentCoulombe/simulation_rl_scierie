@@ -62,7 +62,7 @@ class Loader() :
             
             # Calcul de la durée prévue du déplacement du loader
             regle = self.env.npCharg[charg][self.env.cCharg["regle"]]
-            TempsChargement = float(self.env.np_regles[self.env.np_regles[:,self.env.cRegle["regle"]] == regle,self.env.cRegle["temps chargement"]])
+            TempsChargement = float(self.env.np_regles[self.env.np_regles[:,self.env.cRegle["regle"]] == regle,self.env.cRegle["temps chargement"]]) * self.env.paramSimu["FacteurTempsChargement"]
             dureemin = TempsChargement * (1-self.env.paramSimu["VariationTempsDeplLoader"])
             dureemax = TempsChargement * (1+self.env.paramSimu["VariationTempsDeplLoader"]) 
             duree = random.triangular(dureemin,dureemax,TempsChargement)
