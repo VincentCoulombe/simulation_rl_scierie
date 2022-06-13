@@ -59,8 +59,8 @@ class EnvGym(gym.Env) :
         respect_obj_proportion = -sum(ecart**2 for ecart in outside_prop_range_prenalty) + sum(inside_prop_range_bonus) # Punis si la proportion sort du range voulu et récompense sinon
         
         self.reward = respect_obj_qte_total+respect_obj_proportion
-        
-        self.reward += -100 if self.env.getActionInvalide() == 1 else 100
+        self.reward += 1/self.step_counter*100*self.env.getActionInvalide()
+        # self.reward += -100 if self.env.getActionInvalide() == 1 else 100
         
     def get_avg_reward(self) -> float:
         return np.array(self.rewards)[:, 1].mean()
@@ -84,7 +84,7 @@ class EnvGym(gym.Env) :
         self._update_observation()
         self.step_counter += 1
         total_steps = self.env.paramSimu["NbStepSimulation"]
-        if verbose and self.step_counter in [round(0.25*total_steps), round(0.5*total_steps), round(0.75*total_steps)]:
+        if verbose and self.step_counter in [round(0.25*total_steps), round(0.5*total_steps), round(0.75*total_steps), total_steps]:
             env_name = self.env.paramSimu["RatioSapinEpinette"]
             print(f"Environnement : {env_name} | Step : {self.step_counter}/{total_steps} | Reward : {self.reward:.2f}")
         if self.done:

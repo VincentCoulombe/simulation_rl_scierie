@@ -4,10 +4,12 @@ import pandas as pd
 from Temps import *
 import random
 
-
-def pile_la_plus_elevee(env):
+def pile_la_plus_elevee(env) -> np.array:
+    return pile_la_plus_elevee_liste(env)[-1]
+    
+def pile_la_plus_elevee_liste(env) -> np.array:
     qte_dans_cours, _, obj_proportion_inf, _, _ = env.getIndicateursInventaire()
-    return np.argmax(qte_dans_cours-obj_proportion_inf)
+    return np.argsort(qte_dans_cours-obj_proportion_inf)
     
 def aleatoire(env):
     #Mettre une action aléatoire valide
@@ -24,12 +26,13 @@ def aleatoire(env):
 
 
 def gestion_horaire_et_pile(env):
-    # Sécher pile la plus haute + gérer le vendredi
-    day_of_week, hour = GetInfosTemps(env.now)
-    if day_of_week <= 5 or hour < 12:
-        return pile_la_plus_elevee(env)
-    qte_dans_cours, _, obj_proportion_inf, _, _ = env.getIndicateursInventaire()
-    return np.argmax(qte_dans_cours[7:]-obj_proportion_inf[7:])+7
+    pass
+    # TODO
+    # day_of_week, hour = GetInfosTemps(env.now)
+    # if day_of_week <= 5 or hour < 12:
+    #     return pile_la_plus_elevee(env)
+    # qte_dans_cours, _, obj_proportion_inf, _, _ = env.getIndicateursInventaire()
+    # return np.argmax(qte_dans_cours[7:]-obj_proportion_inf[7:])+7
     
 if __name__ == '__main__':
     pass
