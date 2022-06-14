@@ -33,7 +33,7 @@ if __name__ == "__main__":
     paramSimu = {"df_regles": regles,
              "df_HoraireLoader" : work_schedule(),
              "df_HoraireScierie" : work_schedule(),                
-             "NbStepSimulation": 64*100,
+             "NbStepSimulation": 64*1000,
              "NbStepSimulationTest": 64*10,
              "nbLoader": 1,
              "nbSechoir1": 4,
@@ -52,6 +52,7 @@ if __name__ == "__main__":
              "VariationTempsSechage": 0.1,
              "VariationTempsDeplLoader": 0.1,
              "FacteurSortieScierie" : 0.5, # Permet de sortir plus ou moins de la scierie (1 correspond à sortir exactement ce qui est prévu)
+            "FacteurTempsChargement" : 0.85, 
              "ObjectifStableEnPMP" : 215000 * 4 * 2.5,
              "RatioSapinEpinette" : "50/50",
              "DetailsEvenements" : False
@@ -60,6 +61,6 @@ if __name__ == "__main__":
     env = EnvSimpy(paramSimu)
     recorder = SimuRecorder(env)
     df = recorder.record("pile_la_plus_elevee")
-    df.to_csv(r"DATA/training_wheels.csv", index=False, header=False)
+    df.to_csv(r"DATA/training_wheels.csv", index=False, header=True)
 
     

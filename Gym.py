@@ -1,3 +1,4 @@
+from ast import literal_eval
 import random
 import math
 import pandas as pd
@@ -28,7 +29,7 @@ class EnvGym(gym.Env) :
         self.hyperparams = hyperparams
         try:
             self.training_wheels = True
-            self.training_wheels_df = pd.read_csv(r"DATA/training_wheels.csv")
+            self.training_wheels_df = pd.read_csv(r"DATA/training_wheels.csv",converters={"obs" : literal_eval, "action" : literal_eval})
         except FileNotFoundError:
             self.training_wheels = False
             self.training_wheels_df = None
@@ -50,7 +51,8 @@ class EnvGym(gym.Env) :
         
         if self.training_wheels:
             #Trouver l'action retournée par le model dans la liste des meilleurs actions et plus l'action est loin dans la liste plus le reward est élevé (peut etre au carré)
-            self.reward = np.where(self.action_model == self.training_wheels_df.iloc[self.step_counter, 1])[0]**2
+            y = self.training_wheels_df.iloc[self.step_counter, 1]
+            self.reward = np.where(self.action_model == y, self.action_model, y)[0]**2
         else:
             qte_dans_cours, obj_qte_total, obj_proportion_inf, obj_proportion_sup, _ = self.env.getIndicateursInventaire()
             self.inds_inventaires.append([self.env.now, *qte_dans_cours, *obj_qte_total, *obj_proportion_inf, *obj_proportion_sup])
@@ -70,7 +72,8 @@ class EnvGym(gym.Env) :
             respect_obj_proportion = -sum(ecart**2 for ecart in outside_prop_range_prenalty) + sum(inside_prop_range_bonus) # Punis si la proportion sort du range voulu et récompense sinon
             
             self.reward = respect_obj_qte_total+respect_obj_proportion
-            self.reward += np.where(self.action_model == pile_la_plus_elevee_liste(self.env))[0]**2/(self.step_counter+1)
+            y = pile_la_plus_elevee_liste(self.env)
+            self.reward += np.where(self.action_model == y, self.action_model, y)[0]**2/(self.step_counter+1)
         
     def get_avg_reward(self) -> float:
         return np.array(self.rewards)[:, 1].mean()
@@ -84,13 +87,13 @@ class EnvGym(gym.Env) :
         self.rewards = []
         self.inds_inventaires = []
         self.taux_utilisations = []
-        self._update_observation() 
         self.step_counter = 0
+        self._update_observation()         
         return self.state   
     
     def step (self, action, verbose=True) -> tuple: 
         if self.training_wheels:
-            self.done = self.step_counter == len(self.training_wheels_df)
+            self.done = self.step_counter >= len(self.training_wheels_df)-1
             self.action_model = action
         else:
             self.done = self.env.stepSimpy(action)
@@ -101,12 +104,11 @@ class EnvGym(gym.Env) :
             if verbose and self.step_counter in [round(0.25*total_steps), round(0.5*total_steps), round(0.75*total_steps), total_steps]:
                 env_name = self.env.paramSimu["RatioSapinEpinette"]
                 print(f"Environnement : {env_name} | Step : {self.step_counter}/{total_steps} | Reward : {self.reward:.2f}")
-            if self.done:
-                self.simu_counter += 1
-                print(f"Simulation {self.simu_counter} terminée.")
-                self.rewards_moyens.append(self.get_avg_reward())
-                print(f"Reward moyen : {self.get_avg_reward():.2f}")
-        
+        if self.done:
+            self.simu_counter += 1
+            print(f"Simulation {self.simu_counter} terminée.")
+            self.rewards_moyens.append(self.get_avg_reward())
+            print(f"Reward moyen : {self.rewards_moyens[-1]:.2f}")
         self._update_reward()
         self._update_observation()
         self.step_counter += 1
@@ -166,7 +168,6 @@ class EnvGym(gym.Env) :
             if self.training_wheels_df is not None:
                 print("Training wheels...")
                 model.learn(total_timesteps=self.hyperparams["total_timesteps"], reset_num_timesteps=False)
-                self.evaluate_model(model)
                 self.training_wheels = False
             else:
                 print("Ne peut pas utiliser les roues d'entraînement. Besoin de : /DATA/training_wheels.csv")
@@ -177,7 +178,7 @@ class EnvGym(gym.Env) :
                 print(f"Indicateurs du modèle après l'épisode : {i}")
                 self.evaluate_model(model)
             if save:
-                model.save(f"{models_dir}/episode{i}_reward_moyen{self.rewards_moyens[-1]:.2f}")
+                model.save(f"{save_dir}/episode{i}_reward_moyen{self.rewards_moyens[-1]:.2f}")
 
 
         plt.plot(list(range(self.simu_counter)), self.rewards_moyens, label="reward moyen", color="green")
@@ -192,7 +193,7 @@ class EnvGym(gym.Env) :
             action, _ = model.predict(obs)
             obs, _, done, _ = self.step(action)
             
-        self.plot_inds_inventaires()
+        # self.plot_inds_inventaires()
         self.plot_taux_utilisations()
         self.plot_progression_reward()
         print(f"Moyenne Reward : {self.get_avg_reward():.2f}")
