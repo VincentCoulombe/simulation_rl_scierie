@@ -604,7 +604,7 @@ if __name__ == '__main__':
     timer_avant = time.time()
     
     lstUtilSechoirInterval = []
-    for i in range(5) : 
+    for i in range(20) : 
         env = EnvSimpy(paramSimu)
         done = False
         _, reelle = env.getProportions()
@@ -620,7 +620,7 @@ if __name__ == '__main__':
         lstCours = []
         propReelle = reelle
         while not done:         
-            done = env.stepSimpy(pile_la_plus_elevee(env))
+            done = env.stepSimpy(gestion_horaire_et_pile(env))
             _, reelle = env.getProportions()
             propReelle += reelle
             QteDansCours, QteStable, inf, sup, _ = env.getIndicateursInventaire()
@@ -647,7 +647,9 @@ if __name__ == '__main__':
         plt.yticks(ticks = [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1])
         plt.show()
            
-    print(lstUtilSechoirInterval)
+    print("Liste utilisation séchoirs : ",lstUtilSechoirInterval)
+    print("Intervalles de confiances : ",IntervalleConfiance(lstUtilSechoirInterval))
+
     
     #plt.plot(lstQteDansCours)
     #plt.plot(lstQteStable)
