@@ -9,7 +9,7 @@ def pile_la_plus_elevee(env) -> np.array:
     
 def pile_la_plus_elevee_liste(env) -> np.array:
     qte_dans_cours, _, obj_proportion_inf, _, _ = env.getIndicateursInventaire()
-    return np.argsort(qte_dans_cours-obj_proportion_inf)
+    return np.argsort(qte_dans_cours-obj_proportion_inf).tolist()
     
 def aleatoire(env):
     #Mettre une action aléatoire valide
