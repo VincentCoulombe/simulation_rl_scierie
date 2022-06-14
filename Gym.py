@@ -143,20 +143,16 @@ class EnvGym(gym.Env) :
         plt.legend()
         plt.show()
     
-    def train_model(self, model: PPO, nb_episode: int, save: bool=False, evaluate_every: int = 20, logs_dir: str = "") -> None:
-        if logs_dir != "":
-            os.makedirs(logs_dir, exist_ok=True)
-        if save:
-            models_dir = f"models/training_{int(time.time())}/"
-            os.makedirs(models_dir, exist_ok=True)
-
+    def train_model(self, model: PPO, nb_episode: int, save: bool=False, evaluate_every: int = 20, save_dir: str = "") -> None:
+        
+        os.makedirs(save_dir, exist_ok=True)
         for i in range(nb_episode):
             model.learn(total_timesteps=self.hyperparams["total_timesteps"], reset_num_timesteps=False)
             # if nb_episode % evaluate_every == 0:
             #     print(f"Indicateurs du modèle après l'épisode : {i}")
             #     # self.evaluate_model(model)
             if save:
-                model.save(f"{models_dir}/episode{i}_reward_moyen{self.rewards_moyens[-1]:.2f}")
+                model.save(f"{save_dir}/episode{i}_reward_moyen{self.rewards_moyens[-1]:.2f}")
             plt.plot(list(range(self.simu_counter)), self.rewards_moyens, label="reward moyen", color="green")
             plt.title(f"Reward moyen des {self.simu_counter} épisodes")
             plt.show()
