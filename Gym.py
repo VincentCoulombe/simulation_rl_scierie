@@ -81,8 +81,7 @@ class EnvGym(gym.Env) :
     def reset(self, test:bool =False) -> np.array: 
         if test:
             self.paramSimu["NbStepSimulation"] = self.paramSimu["NbStepSimulationTest"]
-        if not self.training_wheels:
-            self.env = EnvSimpy(self.paramSimu) # Nouvelle simulation simpy       
+        self.env = EnvSimpy(self.paramSimu) # Nouvelle simulation simpy       
         self.done = False
         self.info = {}
         self.rewards = []
