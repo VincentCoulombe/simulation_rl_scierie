@@ -64,7 +64,7 @@ if __name__ == '__main__':
     
     #Tests
     # env.solve_w_heuristique("gestion_horaire_et_pile")
-    best_avg_reward = env.train_model(model, 1, save=False, evaluate_every = 2)
+    best_avg_reward = env.train_model(model, 2, save=False, evaluate_every = 2)
     
     print(f"Temps d'exécution : {time.time()-timer_avant:.2f}")
     
