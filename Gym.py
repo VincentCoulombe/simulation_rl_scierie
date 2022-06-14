@@ -28,10 +28,8 @@ class EnvGym(gym.Env) :
         self.rewards_moyens = []
         self.hyperparams = hyperparams
         try:
-            self.training_wheels = True
             self.training_wheels_df = pd.read_csv(r"DATA/training_wheels.csv",converters={"obs" : literal_eval, "action" : literal_eval})
         except FileNotFoundError:
-            self.training_wheels = False
             self.training_wheels_df = None
                
     def _update_observation(self) -> None:
@@ -40,7 +38,7 @@ class EnvGym(gym.Env) :
             self.state = self.training_wheels_df.iloc[self.step_counter, 0]
         else:
             self.state = self.env.getState()
-            self.taux_utilisations.append([self.env.now, 
+        self.taux_utilisations.append([self.env.now, 
                                        self.env.getTauxUtilisationLoader(), 
                                        self.env.getTauxUtilisationScierie(), 
                                        self.env.getTauxUtilisationSechoirs(),
@@ -162,7 +160,7 @@ class EnvGym(gym.Env) :
         plt.legend()
         plt.show()
     
-    def train_model(self, model: PPO, nb_episode: int, save: bool=False, evaluate_every: int = 20, save_dir: str = f"models/training_{int(time.time())}/", training_wheels: bool = True) -> float:
+    def train_model(self, model: PPO, nb_episode: int, save: bool=False, evaluate_every: int = 20, save_dir: str = f"models/training_{int(time.time())}/", training_wheels: bool = False) -> float:
         if save:
             os.makedirs(save_dir, exist_ok=True)
         self.training_wheels = training_wheels
@@ -170,7 +168,6 @@ class EnvGym(gym.Env) :
             if self.training_wheels_df is not None:
                 print("Training wheels...")
                 for _ in range(nb_episode):
-                    self.reset()
                     model.learn(total_timesteps=self.hyperparams["total_timesteps"], reset_num_timesteps=False)
                 self.training_wheels = False
             else:
