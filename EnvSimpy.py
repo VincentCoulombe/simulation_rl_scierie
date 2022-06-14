@@ -415,12 +415,14 @@ class EnvSimpy(simpy.Environment):
         
         TempsComplet = 0
         NbSechoirs = 0
+        NbPleins = 0
         for key in self.lesEmplacements.keys() :
             if "Séchoir" in key :
                 TempsComplet += self.lesEmplacements[key].getTauxUtilisationComplet()
                 NbSechoirs += 1
-                
-        return TempsComplet / NbSechoirs
+                NbPleins += self.lesEmplacements[key].EstPlein()
+                                               
+        return TempsComplet / NbSechoirs,NbPleins/NbSechoirs
     
     def getTauxRemplissageCours(self):
         return self.lesEmplacements["Sortie sciage"].count / self.paramSimu["CapaciteSortieSciage"]
@@ -500,6 +502,9 @@ def Sechage(env,charg,NomPrepSechage) :
     
     # Transférer le wagon dans le séchoir et commencer le séchage
     yield env.lesEmplacements[NomSechoir].request()   
+    
+    #print(env.now, "Début séchage", GetInfosTemps(env.now))
+    
     env.EnrEven("Début séchage",Charg = charg, Destination = NomSechoir)
     env.npCharg[charg][env.cCharg["Emplacement"]] = NomSechoir
     env.npCharg[charg][env.cCharg["Temps debut sechage"]] = env.now
@@ -507,6 +512,7 @@ def Sechage(env,charg,NomPrepSechage) :
     yield env.timeout(random.triangular(tempsMin,tempsMax,tempsSechage))
     
     # Le séchage est terminé, libérer le séchoir pour pouvoir faire entrer un autre wagon
+    #print(env.now, "Fin séchage", GetInfosTemps(env.now))
     env.EnrEven("Fin séchage",Charg = charg, Destination = NomSechoir)
     env.lesEmplacements[NomSechoir].release(env)   
     env.npCharg[charg][env.cCharg["Emplacement"]] = "Sortie séchoir"
@@ -514,7 +520,7 @@ def Sechage(env,charg,NomPrepSechage) :
     # Décharger le wagon qui vient de sortir du séchoir et le libérer pour qu'il 
     # puisse être à nouveau rempli (on prend pour acquis qu'on a un loader de disponible)
     regle = env.npCharg[charg][env.cCharg["regle"]]
-    TempsDeChargement = float(env.np_regles[env.np_regles[:,env.cRegle["regle"]] == regle,env.cRegle["temps chargement"]])
+    TempsDeChargement = float(env.np_regles[env.np_regles[:,env.cRegle["regle"]] == regle,env.cRegle["temps chargement"]]) * env.paramSimu["FacteurTempsChargement"]
     dureemin = TempsDeChargement * (1-env.paramSimu["VariationTempsDeplLoader"])
     dureemax = TempsDeChargement * (1+env.paramSimu["VariationTempsDeplLoader"]) 
     duree = random.triangular(dureemin,dureemax,TempsDeChargement)
@@ -572,8 +578,8 @@ if __name__ == '__main__':
     paramSimu = {"df_regles": regles,
              "df_HoraireLoader" : df_HoraireLoader,
              "df_HoraireScierie" : df_HoraireScierie,
-             "DetailsEvenements": False,
-             "NbStepSimulation": 64*5,
+             "DetailsEvenements": True,
+             "NbStepSimulation": 64*10,
              "NbStepSimulationTest": 64*2,
              "nbLoader": 1,
              "nbSechoir1": 4,
@@ -591,7 +597,8 @@ if __name__ == '__main__':
              "VariationProdScierie": 0.1,  # Pourcentage de variation de la demande par rapport à la production de la scierie
              "VariationTempsSechage": 0.1,
              "VariationTempsDeplLoader": 0.1,
-             "FacteurSortieScierie" : 1, # Permet de sortir plus ou moins de la scierie (1 correspond à sortir exactement ce qui est prévu)
+             "FacteurSortieScierie" : 0.35, # Permet de sortir plus ou moins de la scierie (1 correspond à sortir exactement ce qui est prévu)
+             "FacteurTempsChargement" : 0.85, 
              "ObjectifStableEnPMP" : 215000 * 4 * 2.5,
              "RatioSapinEpinette" : "50/50"
              }
@@ -615,6 +622,7 @@ if __name__ == '__main__':
     lstsup = []
     lstUtilLoader = []
     lstUtilSechoir = []
+    lstUtilSechoirTempsReel = []
     lstUtilScierie = []
     lstBonEtat = []
     lstCours = []
@@ -629,11 +637,12 @@ if __name__ == '__main__':
         lstinf.append(inf[4])
         lstsup.append(sup[4])
         lstUtilScierie.append(env.getTauxUtilisationScierie())
-        lstUtilSechoir.append(env.getTauxUtilisationSechoirs())
+        a,b = env.getTauxUtilisationSechoirs()
+        lstUtilSechoir.append(a)
+        lstUtilSechoirTempsReel.append(b)
         lstUtilLoader.append(env.getTauxUtilisationLoader())
         lstBonEtat.append(env.getTauxCoursBonEtat())
         lstCours.append(env.getTauxRemplissageCours())
-        env.getState()
             
     plt.plot(lstQteDansCours)
     plt.plot(lstQteStable)
@@ -643,6 +652,7 @@ if __name__ == '__main__':
     
     plt.plot(lstUtilLoader,label="loader")
     plt.plot(lstUtilSechoir,label="Sechoir")
+    #plt.plot(lstUtilSechoirTempsReel,label="Sechoir temps réel")
     plt.plot(lstUtilScierie,label="Scierie")
     plt.plot(lstBonEtat,label="Bon état")
     plt.plot(lstCours,label="Cours")
