@@ -170,9 +170,8 @@ class EnvGym(gym.Env) :
         if self.training_wheels:
             if self.training_wheels_df is not None:
                 print("Training wheels...")
-                for _ in range(100):
+                for _ in range(nb_episode):
                     model.learn(total_timesteps=self.hyperparams["total_timesteps"], reset_num_timesteps=False)
-                    print(_)
                 self.training_wheels = False
             else:
                 print("Ne peut pas utiliser les roues d'entraînement. Besoin de : /DATA/training_wheels.csv")
