@@ -40,7 +40,7 @@ class EnvGym(gym.Env) :
             self.state = self.training_wheels_df.iloc[self.step_counter, 0]
         else:
             self.state = self.env.getState()
-        self.taux_utilisations.append([self.env.now, 
+            self.taux_utilisations.append([self.env.now, 
                                        self.env.getTauxUtilisationLoader(), 
                                        self.env.getTauxUtilisationScierie(), 
                                        self.env.getTauxUtilisationSechoirs(),
@@ -81,7 +81,8 @@ class EnvGym(gym.Env) :
     def reset(self, test:bool =False) -> np.array: 
         if test:
             self.paramSimu["NbStepSimulation"] = self.paramSimu["NbStepSimulationTest"]
-        self.env = EnvSimpy(self.paramSimu) # Nouvelle simulation simpy       
+        if not self.training_wheels:
+            self.env = EnvSimpy(self.paramSimu) # Nouvelle simulation simpy       
         self.done = False
         self.info = {}
         self.rewards = []
@@ -106,13 +107,15 @@ class EnvGym(gym.Env) :
                 print(f"Environnement : {env_name} | Step : {self.step_counter}/{total_steps} | Reward : {self.reward:.2f}")
         if self.done:
             self.simu_counter += 1
-            print(f"Simulation {self.simu_counter} terminée.")
-            self.rewards_moyens.append(self.get_avg_reward())
-            print(f"Reward moyen : {self.rewards_moyens[-1]:.2f}")
+            if not self.training_wheels:
+                print(f"Simulation {self.simu_counter} terminée.")
+                self.rewards_moyens.append(self.get_avg_reward())
+                print(f"Reward moyen : {self.rewards_moyens[-1]:.2f}")
         self._update_reward()
         self._update_observation()
         self.step_counter += 1
-        self.rewards.append([self.env.now, self.reward])
+        if not self.training_wheels:
+            self.rewards.append([self.env.now, self.reward])
         
         return self.state, self.reward, self.done, self.info
     
@@ -167,7 +170,9 @@ class EnvGym(gym.Env) :
         if self.training_wheels:
             if self.training_wheels_df is not None:
                 print("Training wheels...")
-                model.learn(total_timesteps=self.hyperparams["total_timesteps"], reset_num_timesteps=False)
+                for _ in range(100):
+                    model.learn(total_timesteps=self.hyperparams["total_timesteps"], reset_num_timesteps=False)
+                    print(_)
                 self.training_wheels = False
             else:
                 print("Ne peut pas utiliser les roues d'entraînement. Besoin de : /DATA/training_wheels.csv")
@@ -193,7 +198,7 @@ class EnvGym(gym.Env) :
             action, _ = model.predict(obs)
             obs, _, done, _ = self.step(action)
             
-        # self.plot_inds_inventaires()
+        self.plot_inds_inventaires()
         self.plot_taux_utilisations()
         self.plot_progression_reward()
         print(f"Moyenne Reward : {self.get_avg_reward():.2f}")
@@ -207,5 +212,5 @@ class EnvGym(gym.Env) :
             elif heuristique == "gestion_horaire_et_pile":
                 action = gestion_horaire_et_pile(self.env)
             obs, _, done, _ = self.step(action) 
-        # self.plot_inds_inventaires()
+        self.plot_inds_inventaires()
         self.plot_taux_utilisations()

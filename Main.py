@@ -26,7 +26,7 @@ if __name__ == '__main__':
              "df_HoraireLoader" : df_HoraireLoader,
              "df_HoraireScierie" : df_HoraireScierie,
              "DetailsEvenements": True,
-             "NbStepSimulation": 64*10,
+             "NbStepSimulation": 64*100,
              "NbStepSimulationTest": 64*2,
              "nbLoader": 1,
              "nbSechoir1": 4,
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     
     #Tests
     # env.solve_w_heuristique("gestion_horaire_et_pile")
-    best_avg_reward = env.train_model(model, 10, save=False, evaluate_every = 2)
+    best_avg_reward = env.train_model(model, 1, save=False, evaluate_every = 2)
     
     print(f"Temps d'exécution : {time.time()-timer_avant:.2f}")
     
