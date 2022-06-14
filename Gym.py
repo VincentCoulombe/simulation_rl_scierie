@@ -152,9 +152,9 @@ class EnvGym(gym.Env) :
 
         for i in range(nb_episode):
             model.learn(total_timesteps=self.hyperparams["total_timesteps"], reset_num_timesteps=False)
-            if nb_episode % evaluate_every == 0:
-                print(f"Indicateurs du modèle après l'épisode : {i}")
-                self.evaluate_model(model)
+            # if nb_episode % evaluate_every == 0:
+            #     print(f"Indicateurs du modèle après l'épisode : {i}")
+            #     # self.evaluate_model(model)
             if save:
                 model.save(f"{models_dir}/episode{i}_reward_moyen{self.rewards_moyens[-1]:.2f}")
             plt.plot(list(range(self.simu_counter)), self.rewards_moyens, label="reward moyen", color="green")
