@@ -27,7 +27,7 @@ if __name__ == '__main__':
              "df_HoraireScierie" : df_HoraireScierie,
              "DetailsEvenements": True,
              "NbStepSimulation": 64*10,
-             "NbStepSimulationTest": 64*2,
+             "NbStepSimulationTest": 64*10,
              "nbLoader": 1,
              "nbSechoir1": 4,
              "CapaciteSortieSciage": 100, # En nombre de chargements avant de bloquer la scierie

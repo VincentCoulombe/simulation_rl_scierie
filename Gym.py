@@ -157,14 +157,13 @@ class EnvGym(gym.Env) :
                 self.evaluate_model(model)
             if save:
                 model.save(f"{models_dir}/episode{i}_reward_moyen{self.rewards_moyens[-1]:.2f}")
-
-
-        plt.plot(list(range(self.simu_counter)), self.rewards_moyens, label="reward moyen", color="green")
-        plt.title(f"Reward moyen des {self.simu_counter} épisodes")
-        plt.show()
+            plt.plot(list(range(self.simu_counter)), self.rewards_moyens, label="reward moyen", color="green")
+            plt.title(f"Reward moyen des {self.simu_counter} épisodes")
+            plt.show()
         return max(self.rewards_moyens)
                
     def evaluate_model(self, model: PPO):
+        
         obs = self.reset(test=True)
         done = False
         while not done:
