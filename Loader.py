@@ -11,6 +11,7 @@ import pandas as pd
 import numpy as np
 import EnvSimpy
 from Temps import *
+from Heuristiques import *
 
         
 class Loader() : 
@@ -40,11 +41,12 @@ class Loader() :
         else :
             charg = self.env.LienActionCharg[action]
             if charg == -1 :
-                source = "Attente"
+                #source = "Attente"
                 self.env.EnrEven("Action invalide demandée.",NomLoader = self.NomLoader,)
-                self.env.RewardActionInvalide = True
-                duree = self.env.paramSimu["TempsAttenteActionInvalide"]
-                        
+                self.env.RewardActionInvalide = True                
+                #duree = self.env.paramSimu["TempsAttenteActionInvalide"]
+                charg = self.env.LienActionCharg[aleatoire(self.env)]
+                                        
         # Trouver un séchoir de libre
         destination = self.env.GetDestinationCourante()
                                 

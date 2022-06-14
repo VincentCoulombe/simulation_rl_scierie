@@ -565,12 +565,14 @@ if __name__ == '__main__':
     regles = pd.read_csv("DATA/regle.csv")
     df_HoraireScierie = work_schedule()
     df_HoraireLoader = work_schedule()
+    
+    
         
     paramSimu = {"df_regles": regles,
              "df_HoraireLoader" : df_HoraireLoader,
              "df_HoraireScierie" : df_HoraireScierie,
-             "DetailsEvenements": True,
-             "NbStepSimulation": 64*10,
+             "DetailsEvenements": False,
+             "NbStepSimulation": 64*100,
              "NbStepSimulationTest": 64*2,
              "nbLoader": 1,
              "nbSechoir1": 4,
@@ -588,8 +590,8 @@ if __name__ == '__main__':
              "VariationProdScierie": 0.1,  # Pourcentage de variation de la demande par rapport à la production de la scierie
              "VariationTempsSechage": 0.1,
              "VariationTempsDeplLoader": 0.1,
-             "FacteurSortieScierie" : 0.35, # Permet de sortir plus ou moins de la scierie (1 correspond à sortir exactement ce qui est prévu)
-             "FacteurTempsChargement" : 0.85, 
+             "FacteurSortieScierie" : 0.35, #1.7, # Permet de sortir plus ou moins de la scierie (1 correspond à sortir exactement ce qui est prévu)
+             "FacteurTempsChargement" : 0.85, #1 
              "ObjectifStableEnPMP" : 215000 * 4 * 2.5,
              "RatioSapinEpinette" : "50/50"
              }
@@ -604,8 +606,8 @@ if __name__ == '__main__':
     timer_avant = time.time()
     
     lstUtilSechoirInterval = []
-    for i in range(20) : 
-        env = EnvSimpy(paramSimu)
+    for i in range(1) : #20 intervalles basés sur 64*10
+        env = EnvSimpy(paramSimu)    
         done = False
         _, reelle = env.getProportions()
         lstQteDansCours = []
@@ -620,14 +622,14 @@ if __name__ == '__main__':
         lstCours = []
         propReelle = reelle
         while not done:         
-            done = env.stepSimpy(gestion_horaire_et_pile(env))
+            done = env.stepSimpy(pile_la_plus_elevee(env))
             _, reelle = env.getProportions()
             propReelle += reelle
             QteDansCours, QteStable, inf, sup, _ = env.getIndicateursInventaire()
-            lstQteDansCours.append(QteDansCours[4])
-            lstQteStable.append(QteStable[4])
-            lstinf.append(inf[4])
-            lstsup.append(sup[4])
+            lstQteDansCours.append(QteDansCours[2])
+            lstQteStable.append(QteStable[2])
+            lstinf.append(inf[2])
+            lstsup.append(sup[2])
             lstUtilScierie.append(env.getTauxUtilisationScierie())
             lstUtilSechoir.append(env.getTauxUtilisationSechoirs())
             #lstUtilSechoirTempsReel.append(b)
@@ -651,11 +653,11 @@ if __name__ == '__main__':
     print("Intervalles de confiances : ",IntervalleConfiance(lstUtilSechoirInterval))
 
     
-    #plt.plot(lstQteDansCours)
-    #plt.plot(lstQteStable)
-    #plt.plot(lstinf)
-    #plt.plot(lstsup)
-    #plt.show()
+    plt.plot(lstQteDansCours)
+    plt.plot(lstQteStable)
+    plt.plot(lstinf)
+    plt.plot(lstsup)
+    plt.show()
     
     
     timer_après = time.time()
