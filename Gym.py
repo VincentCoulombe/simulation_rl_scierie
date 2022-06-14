@@ -209,3 +209,4 @@ class EnvGym(gym.Env) :
             obs, _, done, _ = self.step(action) 
         # self.plot_inds_inventaires()
         self.plot_taux_utilisations()
+        
