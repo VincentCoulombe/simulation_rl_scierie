@@ -601,12 +601,11 @@ if __name__ == '__main__':
     
     timer_avant = time.time()
     
-    env = EnvSimpy(paramSimu)
-    
     timer_avant = time.time()
     
     lstUtilSechoirInterval = []
     for i in range(5) : 
+        env = EnvSimpy(paramSimu)
         done = False
         _, reelle = env.getProportions()
         lstQteDansCours = []
