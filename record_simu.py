@@ -33,7 +33,7 @@ if __name__ == "__main__":
     paramSimu = {"df_regles": regles,
              "df_HoraireLoader" : work_schedule(),
              "df_HoraireScierie" : work_schedule(),                
-             "NbStepSimulation": 64*1,
+             "NbStepSimulation": 64*100,
              "NbStepSimulationTest": 64*10,
              "nbLoader": 1,
              "nbSechoir1": 4,
@@ -60,6 +60,6 @@ if __name__ == "__main__":
     env = EnvSimpy(paramSimu)
     recorder = SimuRecorder(env)
     df = recorder.record("pile_la_plus_elevee")
-    df.to_csv(r"DATA/training_wheels.csv")
+    df.to_csv(r"DATA/training_wheels.csv", index=False, header=False)
 
     
