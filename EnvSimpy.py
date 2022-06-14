@@ -177,15 +177,6 @@ class EnvSimpy(simpy.Environment):
 
     # Trouver un séchoir de libre, si plusieurs séchoir, prendre lui qui devrait se libérer en premier
     def GetDestinationCourante(self) : 
-        
-        #destination = "Attente"
-        #TempsSechageMin = 9999999999
-       # destinationMin = destination
-       # for key in self.lesEmplacements.keys() : 
-       #     if "Préparation séchoir" in key :
-       #         if not self.lesEmplacements[key].EstPlein() :
-       #             destination = self.lesEmplacements[key].Nom
-       #             NomSechoir = "Séchoir" + destination[len("Préparation séchoir"):]
 
         if self.DestinationCourante is None : 
             return "Attente"
@@ -422,7 +413,7 @@ class EnvSimpy(simpy.Environment):
                 NbSechoirs += 1
                 NbPleins += self.lesEmplacements[key].EstPlein()
                                                
-        return TempsComplet / NbSechoirs,NbPleins/NbSechoirs
+        return TempsComplet / NbSechoirs #,NbPleins/NbSechoirs
     
     def getTauxRemplissageCours(self):
         return self.lesEmplacements["Sortie sciage"].count / self.paramSimu["CapaciteSortieSciage"]
@@ -613,51 +604,58 @@ if __name__ == '__main__':
     env = EnvSimpy(paramSimu)
     
     timer_avant = time.time()
-               
-    done = False
-    _, reelle = env.getProportions()
-    lstQteDansCours = []
-    lstQteStable = []
-    lstinf = []
-    lstsup = []
-    lstUtilLoader = []
-    lstUtilSechoir = []
-    lstUtilSechoirTempsReel = []
-    lstUtilScierie = []
-    lstBonEtat = []
-    lstCours = []
-    propReelle = reelle
-    while not done:         
-        done = env.stepSimpy(aleatoire(env))
-        _, reelle = env.getProportions()
-        propReelle += reelle
-        QteDansCours, QteStable, inf, sup, _ = env.getIndicateursInventaire()
-        lstQteDansCours.append(QteDansCours[4])
-        lstQteStable.append(QteStable[4])
-        lstinf.append(inf[4])
-        lstsup.append(sup[4])
-        lstUtilScierie.append(env.getTauxUtilisationScierie())
-        a,b = env.getTauxUtilisationSechoirs()
-        lstUtilSechoir.append(a)
-        lstUtilSechoirTempsReel.append(b)
-        lstUtilLoader.append(env.getTauxUtilisationLoader())
-        lstBonEtat.append(env.getTauxCoursBonEtat())
-        lstCours.append(env.getTauxRemplissageCours())
-            
-    plt.plot(lstQteDansCours)
-    plt.plot(lstQteStable)
-    plt.plot(lstinf)
-    plt.plot(lstsup)
-    plt.show()
     
-    plt.plot(lstUtilLoader,label="loader")
-    plt.plot(lstUtilSechoir,label="Sechoir")
-    #plt.plot(lstUtilSechoirTempsReel,label="Sechoir temps réel")
-    plt.plot(lstUtilScierie,label="Scierie")
-    plt.plot(lstBonEtat,label="Bon état")
-    plt.plot(lstCours,label="Cours")
-    plt.legend()  
-    plt.show()
+    lstUtilSechoirInterval = []
+    for i in range(5) : 
+        done = False
+        _, reelle = env.getProportions()
+        lstQteDansCours = []
+        lstQteStable = []
+        lstinf = []
+        lstsup = []
+        lstUtilLoader = []
+        lstUtilSechoir = []
+        lstUtilSechoirTempsReel = []
+        lstUtilScierie = []
+        lstBonEtat = []
+        lstCours = []
+        propReelle = reelle
+        while not done:         
+            done = env.stepSimpy(pile_la_plus_elevee(env))
+            _, reelle = env.getProportions()
+            propReelle += reelle
+            QteDansCours, QteStable, inf, sup, _ = env.getIndicateursInventaire()
+            lstQteDansCours.append(QteDansCours[4])
+            lstQteStable.append(QteStable[4])
+            lstinf.append(inf[4])
+            lstsup.append(sup[4])
+            lstUtilScierie.append(env.getTauxUtilisationScierie())
+            lstUtilSechoir.append(env.getTauxUtilisationSechoirs())
+            #lstUtilSechoirTempsReel.append(b)
+            lstUtilLoader.append(env.getTauxUtilisationLoader())
+            lstBonEtat.append(env.getTauxCoursBonEtat())
+            lstCours.append(env.getTauxRemplissageCours())
+            
+        lstUtilSechoirInterval.append(env.getTauxUtilisationSechoirs())
+    
+        plt.plot(lstUtilLoader,label="loader")
+        plt.plot(lstUtilSechoir,label="Sechoir")
+        #plt.plot(lstUtilSechoirTempsReel,label="Sechoir temps réel")
+        plt.plot(lstUtilScierie,label="Scierie")
+        plt.plot(lstBonEtat,label="Bon état")
+        plt.plot(lstCours,label="Cours")
+        plt.legend()  
+        plt.yticks(ticks = [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1])
+        plt.show()
+           
+    print(lstUtilSechoirInterval)
+    
+    #plt.plot(lstQteDansCours)
+    #plt.plot(lstQteStable)
+    #plt.plot(lstinf)
+    #plt.plot(lstsup)
+    #plt.show()
+    
     
     timer_après = time.time()
     
@@ -667,7 +665,7 @@ if __name__ == '__main__':
     regles = env.np_regles
 
     #print(propVoulu)
-    print(propReelle)
+    #print(propReelle)
     print("Temps d'exécution : ", timer_après-timer_avant)
     #print("Durée en h/j/an de la simulation : ", env.now, env.now/ 24, env.now/24/365)
     

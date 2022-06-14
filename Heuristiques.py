@@ -26,13 +26,18 @@ def aleatoire(env):
 
 
 def gestion_horaire_et_pile(env):
-    pass
-    # TODO
-    # day_of_week, hour = GetInfosTemps(env.now)
-    # if day_of_week <= 5 or hour < 12:
-    #     return pile_la_plus_elevee(env)
-    # qte_dans_cours, _, obj_proportion_inf, _, _ = env.getIndicateursInventaire()
-    # return np.argmax(qte_dans_cours[7:]-obj_proportion_inf[7:])+7
+    
+    TempsSechoirs = env.GetTempsRestantSechoirs()
+    TempsChargement = env.paramSimu["df_regles"]["temps chargement"].to_numpy() * env.paramSimu["FacteurTempsChargement"]
+    TempsEntreDansSechoir = max(env.now + np.mean(TempsChargement),env.now + TempsSechoirs[0])
+    
+    day_of_week, hour = GetInfosTemps(TempsEntreDansSechoir)  
+    
+    if day_of_week <= 4 or hour < 15 or day_of_week >= 6 :
+         return pile_la_plus_elevee(env)
+    
+    qte_dans_cours, _, obj_proportion_inf, _, _ = env.getIndicateursInventaire()
+    return np.argmax(qte_dans_cours[7:]-obj_proportion_inf[7:])+7
     
 if __name__ == '__main__':
     pass
