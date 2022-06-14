@@ -171,6 +171,7 @@ class EnvGym(gym.Env) :
             if self.training_wheels_df is not None:
                 print("Training wheels...")
                 for _ in range(nb_episode):
+                    self.reset()
                     model.learn(total_timesteps=self.hyperparams["total_timesteps"], reset_num_timesteps=False)
                 self.training_wheels = False
             else:
