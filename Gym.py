@@ -45,7 +45,7 @@ class EnvGym(gym.Env) :
         self.inds_inventaires.append([self.env.now, *qte_dans_cours, *obj_qte_total, *obj_proportion_inf, *obj_proportion_sup])
         
         diff_proportion_qte = obj_proportion_inf-obj_qte_total # Si différence positive, on a trop de container de ce type dans la cours
-        respect_obj_qte_total = -sum(ecart**2 for ecart in diff_proportion_qte if ecart>0) # Punis si les containers de trop dans la cours
+        respect_obj_qte_total = -sum(np.sqrt(abs(ecart)) for ecart in diff_proportion_qte if ecart>0) # Punis si les containers de trop dans la cours
         
         outside_prop_range_prenalty = [] # Garder la proportion réelle dans le range de proportion voulu
         inside_prop_range_bonus = []
@@ -55,19 +55,15 @@ class EnvGym(gym.Env) :
             elif qte_reelle < obj_prop_inf:
                 outside_prop_range_prenalty.append(obj_prop_inf-qte_reelle)
             else:
-                inside_prop_range_bonus.append(1)                
-        respect_obj_proportion = -sum(ecart**2 for ecart in outside_prop_range_prenalty) + sum(inside_prop_range_bonus) # Punis si la proportion sort du range voulu et récompense sinon
+                inside_prop_range_bonus.append(5)                
+        respect_obj_proportion = -sum(abs(ecart) for ecart in outside_prop_range_prenalty) + sum(inside_prop_range_bonus) # Punis si la proportion sort du range voulu et récompense sinon
         
-        self.reward = respect_obj_qte_total+respect_obj_proportion
-        y = pile_la_plus_elevee_liste(self.env)
-        self.reward += 100*np.where(self.action == y, self.action, y)[0]**2/(self.step_counter+1)
+        self.reward = respect_obj_qte_total + respect_obj_proportion + 0.25*(self.action == gestion_horaire_et_pile(self.env))
         
     def get_avg_reward(self) -> float:
         return np.array(self.rewards)[:, 1].mean()
                 
     def reset(self, test:bool =False) -> np.array: 
-        if test:
-            self.paramSimu["NbStepSimulation"] = self.paramSimu["NbStepSimulationTest"]
         self.env = EnvSimpy(self.paramSimu) # Nouvelle simulation simpy       
         self.done = False
         self.info = {}
@@ -93,7 +89,7 @@ class EnvGym(gym.Env) :
             self.simu_counter += 1
             print(f"Simulation {self.simu_counter} terminée.")
             self.rewards_moyens.append(self.get_avg_reward())
-            print(f"Reward moyen : {self.get_avg_reward():.2f}")
+            print(f"Reward moyen : {self.rewards_moyens[-1]:.2f}")
             
         self.rewards.append([self.env.now, self.reward])
         
@@ -179,6 +175,9 @@ class EnvGym(gym.Env) :
                 action = pile_la_plus_elevee(self.env)
             elif heuristique == "gestion_horaire_et_pile":
                 action = gestion_horaire_et_pile(self.env)
+            else:
+                action = aleatoire(self.env)
             obs, _, done, _ = self.step(action) 
-        self.plot_inds_inventaires()
-        self.plot_taux_utilisations()
+        # self.plot_inds_inventaires()
+        # self.plot_taux_utilisations()
+        return self.rewards_moyens[-1]

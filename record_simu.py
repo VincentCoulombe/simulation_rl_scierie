@@ -33,7 +33,7 @@ if __name__ == "__main__":
     paramSimu = {"df_regles": regles,
              "df_HoraireLoader" : work_schedule(),
              "df_HoraireScierie" : work_schedule(),                
-             "NbStepSimulation": 64*10,
+             "NbStepSimulation": 64*1000,
              "NbStepSimulationTest": 64*10,
              "nbLoader": 1,
              "nbSechoir1": 4,
