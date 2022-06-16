@@ -59,14 +59,5 @@ if __name__ == '__main__':
     
     timer_avant = time.time()
     env = EnvGym(paramSimu, get_action_space(paramSimu), get_state_space(paramSimu), state_min = 0, state_max = 1, hyperparams=hyperparams)
-    # model = PPO('MlpPolicy', env, n_steps=hyperparams["n_steps"], batch_size=hyperparams["batch_size"], n_epochs=hyperparams["n_epochs"], learning_rate=hyperparams["lr"],
-    #             verbose=0)
-    # model = PPO.load(r"./models/training_wheels")
-    
-    #Tests
-    env.solve_w_heuristique("gestion_horaire_et_pile")
-    # best_avg_reward = env.evaluate_model(model)
-    
-    print(f"Temps d'exécution : {time.time()-timer_avant:.2f}")
-    
-      
+    model = PPO.load(r"./models/training_final/episode3_reward_moyen113.67")
+    best_avg_reward = env.evaluate_model(model)

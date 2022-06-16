@@ -165,7 +165,7 @@ class EnvGym(gym.Env) :
         self.plot_inds_inventaires()
         self.plot_taux_utilisations()
         self.plot_progression_reward()
-        print(f"Moyenne Reward : {self.get_avg_reward():.2f}")
+        print(f"Moyenne Reward : {self.rewards_moyens[-1]:.2f}")
             
     def solve_w_heuristique(self, heuristique: str = "aleatoire"):
         _ = self.reset(test=True)  
@@ -178,6 +178,6 @@ class EnvGym(gym.Env) :
             else:
                 action = aleatoire(self.env)
             obs, _, done, _ = self.step(action) 
-        # self.plot_inds_inventaires()
-        # self.plot_taux_utilisations()
+        self.plot_inds_inventaires()
+        self.plot_taux_utilisations()
         return self.rewards_moyens[-1]
